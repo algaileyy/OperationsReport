@@ -106,7 +106,7 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
+    <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold" style={{ color: "var(--ink-primary)" }}>
@@ -234,6 +234,6 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }
