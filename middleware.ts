@@ -15,5 +15,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/input", "/input/", "/api/save", "/api/publish", "/api/report-data"],
+  matcher: ["/input", "/input/", "/input/preview", "/api/save", "/api/publish", "/api/report-data"],
 };

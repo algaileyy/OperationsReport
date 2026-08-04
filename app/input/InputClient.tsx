@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import { monthLabel } from "@/lib/months";
 import { TEAMS, publishingTotal } from "@/lib/teams";
@@ -62,6 +63,13 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
     }));
   }
 
+  function setNote(teamKey: string, value: string) {
+    setData((d) => ({
+      ...d,
+      notes: { ...d.notes, [teamKey]: value },
+    }));
+  }
+
   async function onSave() {
     setSaving(true);
     setSaveMsg(null);
@@ -71,7 +79,13 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
       body: JSON.stringify({ month, data }),
     });
     setSaving(false);
-    setSaveMsg(res.ok ? "Saved." : "Failed to save.");
+    if (!res.ok) {
+      setSaveMsg("Failed to save.");
+    } else if (month === live) {
+      setSaveMsg("Saved — this month is already live, no need to republish.");
+    } else {
+      setSaveMsg(`Saved. ${monthLabel(month)} is not the live report yet — use "Live report month" above to publish it.`);
+    }
   }
 
   async function onPublish() {
@@ -127,8 +141,11 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
         </div>
       </section>
 
-      <div className="mb-6">
+      <div className="mb-6 flex items-end justify-between gap-3">
         <MonthPicker value={month} onChange={loadMonth} markedMonths={monthsWithData} label="Editing month" />
+        <Link href={`/input/preview?month=${month}`} className="text-sm underline" style={{ color: "var(--ink-secondary)" }}>
+          Export this month&apos;s report
+        </Link>
       </div>
 
       {loading ? (
@@ -183,6 +200,19 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
                     </div>
                   )}
                 </div>
+                <label className="mt-4 flex flex-col gap-1">
+                  <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                    Notes
+                  </span>
+                  <textarea
+                    value={data.notes?.[team.key] ?? ""}
+                    onChange={(e) => setNote(team.key, e.target.value)}
+                    rows={2}
+                    placeholder="Anything worth calling out for this team this month…"
+                    className="rounded-md border px-3 py-2 text-sm"
+                    style={inputStyle}
+                  />
+                </label>
               </section>
             );
           })}
