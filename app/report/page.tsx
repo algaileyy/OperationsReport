@@ -1,8 +1,9 @@
 import { getMonthlyReport, getPublishedMonth, getReportUpdatedAt } from "@/lib/db";
 import { monthLabel } from "@/lib/months";
 import { formatNumber } from "@/lib/format";
-import { TEAMS, publishingTotal, type TeamConfig, type TeamData } from "@/lib/teams";
+import { TEAMS, type TeamConfig, type TeamData } from "@/lib/teams";
 import { emptyReport } from "@/lib/report";
+import GroupRow from "./GroupRow";
 
 export const dynamic = "force-dynamic";
 
@@ -160,10 +161,11 @@ export default async function ReportPage() {
         <div className="flex flex-1 flex-col gap-6">
           {TEAMS.map((team, idx) => {
             const teamData = report.teams[team.key] ?? {};
-            const rows = team.fields.map((f) => ({ label: f.label, value: teamData[f.key] ?? 0 }));
-            if (team.key === "publishing") {
-              rows.push({ label: "Total Assets in CMS (movies and episodes)", value: publishingTotal(teamData) });
-            }
+            const groups = team.groups ?? [];
+            const groupedKeys = new Set(groups.flatMap((g) => g.detailFieldKeys));
+            const plainFields = team.fields.filter((f) => !groupedKeys.has(f.key));
+            const fieldLabel = (key: string) => team.fields.find((f) => f.key === key)?.label ?? key;
+            let rowIndex = 0;
 
             return (
               <section key={team.key} className="rounded-2xl p-5" style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}>
@@ -177,14 +179,23 @@ export default async function ReportPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map((row, i) => (
-                        <tr key={row.label} style={{ background: i % 2 ? ROW_ALT : "transparent" }}>
-                          <Td>
-                            <strong style={{ color: TEXT_BRIGHT }}>{row.label}</strong>
-                          </Td>
-                          <Td>{formatNumber(row.value)}</Td>
-                        </tr>
-                      ))}
+                      {groups.map((group) => {
+                        const total = group.sumKeys.reduce((s, k) => s + (teamData[k] ?? 0), 0);
+                        const detail = group.detailFieldKeys.map((k) => ({ label: fieldLabel(k), value: teamData[k] ?? 0 }));
+                        const alt = rowIndex++ % 2 === 1;
+                        return <GroupRow key={group.key} label={group.label} total={total} detail={detail} altRow={alt} />;
+                      })}
+                      {plainFields.map((field) => {
+                        const alt = rowIndex++ % 2 === 1;
+                        return (
+                          <tr key={field.key} style={{ background: alt ? ROW_ALT : "transparent" }}>
+                            <Td>
+                              <strong style={{ color: TEXT_BRIGHT }}>{field.label}</strong>
+                            </Td>
+                            <Td>{formatNumber(teamData[field.key] ?? 0)}</Td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
