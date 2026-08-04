@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { TEAMS, publishingTotal, type TeamData } from "@/lib/teams";
 import { monthLabel } from "@/lib/months";
+import MonthPicker from "./MonthPicker";
 
 const ACCENT_HEX: Record<string, string> = {
   blue: "#2a78d6",
@@ -14,7 +15,7 @@ const ACCENT_HEX: Record<string, string> = {
 
 type Props = {
   publishedMonth: string | null;
-  monthOptions: string[];
+  monthsWithData: string[];
   defaultMonth: string;
   defaultTeamKey: string;
   initialData: TeamData;
@@ -22,7 +23,7 @@ type Props = {
 
 export default function InputClient({
   publishedMonth,
-  monthOptions,
+  monthsWithData,
   defaultMonth,
   defaultTeamKey,
   initialData,
@@ -115,19 +116,8 @@ export default function InputClient({
           Currently showing on the public report:{" "}
           <strong>{live ? monthLabel(live) : "nothing published yet"}</strong>
         </p>
-        <div className="flex items-center gap-2">
-          <select
-            value={publishMonth}
-            onChange={(e) => setPublishMonth(e.target.value)}
-            className="rounded-md border px-3 py-1.5 text-sm"
-            style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--ink-primary)" }}
-          >
-            {monthOptions.map((m) => (
-              <option key={m} value={m}>
-                {monthLabel(m)}
-              </option>
-            ))}
-          </select>
+        <div className="flex items-end gap-2">
+          <MonthPicker value={publishMonth} onChange={setPublishMonth} markedMonths={monthsWithData} />
           <button
             onClick={onPublish}
             disabled={publishing || publishMonth === live}
@@ -156,22 +146,8 @@ export default function InputClient({
         ))}
       </div>
 
-      <div className="mb-6 flex items-center gap-2">
-        <label className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-          Month
-        </label>
-        <select
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          className="rounded-md border px-3 py-1.5 text-sm"
-          style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--ink-primary)" }}
-        >
-          {monthOptions.map((m) => (
-            <option key={m} value={m}>
-              {monthLabel(m)}
-            </option>
-          ))}
-        </select>
+      <div className="mb-6">
+        <MonthPicker value={month} onChange={setMonth} markedMonths={monthsWithData} label="Month" />
       </div>
 
       <section

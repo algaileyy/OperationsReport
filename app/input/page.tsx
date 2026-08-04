@@ -1,6 +1,6 @@
 import { TEAMS } from "@/lib/teams";
 import { getPublishedMonth, getReportData, listMonthsWithData } from "@/lib/db";
-import { currentMonthKey, recentMonthOptions } from "@/lib/months";
+import { currentMonthKey } from "@/lib/months";
 import InputClient from "./InputClient";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export default async function InputPage() {
   return (
     <InputClient
       publishedMonth={publishedMonth}
-      monthOptions={recentMonthOptions(monthsWithData)}
+      monthsWithData={monthsWithData}
       defaultMonth={defaultMonth}
       defaultTeamKey={defaultTeam.key}
       initialData={initialData}
