@@ -1,10 +1,15 @@
 // Convenience script to create tables ahead of time. Not required — the app
 // creates them automatically on first request — but useful right after
 // connecting a fresh Postgres database.
-import { sql } from "@vercel/postgres";
+import { Pool } from "pg";
+
+const pool = new Pool({
+  connectionString: process.env.POSTGRES_URL,
+  ssl: process.env.POSTGRES_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+});
 
 async function main() {
-  await sql`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS reports (
       id SERIAL PRIMARY KEY,
       team_key TEXT NOT NULL,
@@ -13,19 +18,19 @@ async function main() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (team_key, month)
     );
-  `;
-  await sql`
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
-  `;
+  `);
   console.log("Schema ready.");
 }
 
 main()
-  .then(() => process.exit(0))
+  .then(() => pool.end())
   .catch((err) => {
     console.error(err);
-    process.exit(1);
+    return pool.end().finally(() => process.exit(1));
   });
