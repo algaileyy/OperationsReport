@@ -10,13 +10,10 @@ const pool = new Pool({
 
 async function main() {
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS reports (
-      id SERIAL PRIMARY KEY,
-      team_key TEXT NOT NULL,
-      month TEXT NOT NULL,
+    CREATE TABLE IF NOT EXISTS monthly_reports (
+      month TEXT PRIMARY KEY,
       data JSONB NOT NULL DEFAULT '{}'::jsonb,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      UNIQUE (team_key, month)
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `);
   await pool.query(`

@@ -1,133 +1,106 @@
-import { REPORT_ORDER, TEAMS, getTeam, publishingTotal } from "@/lib/teams";
-import { getAllReportData, getPublishedMonth, getReportUpdatedAt } from "@/lib/db";
+import { getMonthlyReport, getPublishedMonth, getReportUpdatedAt } from "@/lib/db";
 import { monthLabel } from "@/lib/months";
 import { formatNumber } from "@/lib/format";
+import type { StorageCapacity } from "@/lib/report";
 
 export const dynamic = "force-dynamic";
 
-// The report is a deliverable everyone should see the same way, so it uses a
-// fixed light palette rather than following the viewer's OS dark-mode setting
-// (unlike /input, which is an internal tool and can follow it).
-const PAGE_BG = "#f4f6fb";
-const CARD_BG = "#ffffff";
-const INK_PRIMARY = "#111827";
-const INK_SECONDARY = "#4b5563";
-const INK_MUTED = "#6b7280";
-const BORDER = "rgba(17,24,39,0.08)";
-const NAVY = "#0d366b";
-const NAVY_LIGHT = "#86b6ef";
+const GRADIENT =
+  "linear-gradient(135deg, #12283d 0%, #164a5c 30%, #1c7a86 65%, #2fc2c9 100%)";
+const PANEL = "rgba(255,255,255,0.07)";
+const PANEL_BORDER = "rgba(255,255,255,0.14)";
+const HEADER_ROW = "rgba(6,32,40,0.55)";
+const ROW_ALT = "rgba(255,255,255,0.04)";
+const TEXT_BRIGHT = "#ffffff";
+const TEXT_DIM = "#bfe4ea";
+const ACCENT_CYAN = "#5fd4f4";
 
-const ACCENT_HEX: Record<string, string> = {
-  blue: "#2a78d6",
-  orange: "#eb6834",
-  aqua: "#1baf7a",
-  violet: "#4a3aa7",
+const FREED_COLOR = "#0d366b";
+const FREE_REST_COLOR = "#2a78d6";
+const STILL_IN_USE_COLOR = "#5fd4f4";
+
+const PRIORITY_COLOR: Record<string, string> = {
+  Low: "#0ca30c",
+  Medium: "#fab219",
+  High: "#d03b3b",
 };
 
-const TRACK_HEX: Record<string, string> = {
-  blue: "#e3eefa",
-  orange: "#fce8e0",
-  aqua: "#e0f5ec",
-  violet: "#e9e6f6",
-};
-
-function TeamBadge({ initial, accent }: { initial: string; accent: string }) {
+function SectionHeading({ n, title }: { n: number; title: string }) {
   return (
-    <span
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold text-white"
-      style={{ background: accent }}
-    >
-      {initial}
-    </span>
+    <h2 className="mb-3 flex items-baseline gap-2 text-lg font-bold" style={{ color: TEXT_BRIGHT }}>
+      <span style={{ color: ACCENT_CYAN }}>{n}.</span>
+      {title}
+    </h2>
   );
 }
 
-/** Horizontal bar: magnitude comparison within one team, own scale, value at the tip. */
-function BarRow({
-  label,
-  value,
-  max,
-  accent,
-  track,
-}: {
-  label: string;
-  value: number | undefined;
-  max: number;
-  accent: string;
-  track: string;
-}) {
-  const v = value ?? 0;
-  const pct = max > 0 ? Math.max((v / max) * 100, v > 0 ? 2 : 0) : 0;
+function Th({ children }: { children: React.ReactNode }) {
   return (
-    <div>
-      <div className="mb-1.5 text-sm font-medium" style={{ color: INK_SECONDARY }}>
-        {label}
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="h-3 flex-1 overflow-hidden rounded-full" style={{ background: track }}>
-          <div className="h-3 rounded-r-full" style={{ width: `${pct}%`, background: accent }} />
-        </div>
-        <span className="stat-value w-16 shrink-0 text-right text-sm font-bold" style={{ color: INK_PRIMARY }}>
-          {formatNumber(v)}
-        </span>
-      </div>
-    </div>
+    <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: TEXT_BRIGHT }}>
+      {children}
+    </th>
   );
 }
 
-function StatTile({ label, value, accent }: { label: string; value: number | undefined; accent: string }) {
+function Td({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border-t-4 p-4" style={{ borderTopColor: accent, background: PAGE_BG }}>
-      <p className="stat-value text-3xl font-bold leading-none" style={{ color: INK_PRIMARY }}>
-        {formatNumber(value)}
-      </p>
-      <p className="mt-2 text-xs leading-snug" style={{ color: INK_SECONDARY }}>
-        {label}
-      </p>
-    </div>
+    <td className="px-3 py-2 text-sm" style={{ color: "#e7f6f8" }}>
+      {children}
+    </td>
   );
 }
 
-/** Legitimate part-of-whole donut: episodes + movies genuinely sum to the CMS total. */
-function CompositionDonut({
-  a,
-  b,
-  aLabel,
-  bLabel,
-  aColor,
-  bColor,
-}: {
-  a: number;
-  b: number;
-  aLabel: string;
-  bLabel: string;
-  aColor: string;
-  bColor: string;
-}) {
-  const total = a + b || 1;
-  const aPct = Math.round((a / total) * 100);
-  const aDeg = (a / total) * 360;
+function CapacityPie({ sc }: { sc: StorageCapacity }) {
+  const free = sc.currentlyFreeTb ?? 0;
+  const freed = Math.min(sc.freedByArchivingTb ?? 0, free);
+  const freeRest = free - freed;
+  const stillInUse = sc.stillInUseTb ?? 0;
+  const total = freed + freeRest + stillInUse || 1;
+
+  const freedDeg = (freed / total) * 360;
+  const freeRestDeg = (freeRest / total) * 360;
 
   return (
-    <div className="flex items-center gap-4 rounded-lg p-4" style={{ background: PAGE_BG }}>
-      <div
-        className="relative h-24 w-24 shrink-0 rounded-full"
-        style={{ background: `conic-gradient(${aColor} 0deg ${aDeg}deg, ${bColor} ${aDeg}deg 360deg)` }}
-      >
-        <div className="absolute inset-[10px] flex items-center justify-center rounded-full" style={{ background: PAGE_BG }}>
-          <span className="text-lg font-bold" style={{ color: INK_PRIMARY }}>
-            {aPct}%
-          </span>
+    <div className="mb-6 last:mb-0">
+      <div className="mb-2 flex items-baseline justify-between">
+        <div>
+          <p className="text-sm font-bold" style={{ color: FREE_REST_COLOR }}>
+            {sc.name || "Untitled storage"}
+          </p>
+          <p className="text-xs" style={{ color: "#5b6b76" }}>
+            {sc.subtitle}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-xl font-bold" style={{ color: "#0b1d27" }}>
+            {formatNumber(sc.totalCapacityTb ?? undefined)}
+          </p>
+          <p className="text-xs" style={{ color: "#5b6b76" }}>
+            TB Total Capacity
+          </p>
         </div>
       </div>
-      <div className="flex flex-col gap-2 text-xs">
-        <div className="flex items-center gap-1.5" style={{ color: INK_SECONDARY }}>
-          <span className="h-2 w-2 rounded-full" style={{ background: aColor }} />
-          {aLabel}: <strong style={{ color: INK_PRIMARY }}>{formatNumber(a)}</strong>
-        </div>
-        <div className="flex items-center gap-1.5" style={{ color: INK_SECONDARY }}>
-          <span className="h-2 w-2 rounded-full" style={{ background: bColor }} />
-          {bLabel}: <strong style={{ color: INK_PRIMARY }}>{formatNumber(b)}</strong>
+
+      <div className="flex items-center gap-5">
+        <div
+          className="h-32 w-32 shrink-0 rounded-full"
+          style={{
+            background: `conic-gradient(${FREED_COLOR} 0deg ${freedDeg}deg, ${FREE_REST_COLOR} ${freedDeg}deg ${freedDeg + freeRestDeg}deg, ${STILL_IN_USE_COLOR} ${freedDeg + freeRestDeg}deg 360deg)`,
+          }}
+        />
+        <div className="flex flex-col gap-2 text-xs" style={{ color: "#33454f" }}>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: FREE_REST_COLOR }} />
+            Currently Free: <strong>{formatNumber(free)}TB</strong>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: STILL_IN_USE_COLOR }} />
+            Still in use: <strong>{formatNumber(stillInUse)}TB</strong>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: FREED_COLOR }} />
+            Freed by Archiving: <strong>{formatNumber(freed)}TB</strong>
+          </div>
         </div>
       </div>
     </div>
@@ -139,115 +112,199 @@ export default async function ReportPage() {
 
   if (!publishedMonth) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center px-6 text-center" style={{ background: PAGE_BG }}>
-        <p style={{ color: INK_SECONDARY }}>No report has been published yet. Check back soon.</p>
+      <main className="flex min-h-screen flex-col items-center justify-center px-6 text-center text-white" style={{ background: GRADIENT }}>
+        <p>No report has been published yet. Check back soon.</p>
       </main>
     );
   }
 
-  const [allData, updatedAt] = await Promise.all([
-    getAllReportData(publishedMonth),
+  const [data, updatedAt] = await Promise.all([
+    getMonthlyReport(publishedMonth),
     getReportUpdatedAt(publishedMonth),
   ]);
 
+  const report =
+    data ?? {
+      archivingProgress: [],
+      serverStorage: [],
+      milestones: { currentArchiveCapacity: "", newCapacityExpected: "", nextMigrationPhase: "" },
+      issues: [],
+      storageCapacities: [],
+    };
+
   return (
-    <main style={{ background: PAGE_BG }}>
-      <header style={{ background: NAVY }}>
-        <div className="mx-auto max-w-5xl px-6 py-14">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em]" style={{ color: NAVY_LIGHT }}>
-            Statistics &amp; Results
-          </p>
-          <h1 className="mt-2 text-4xl font-extrabold text-white sm:text-5xl">Operations Report</h1>
-          <p className="mt-3 text-lg font-medium" style={{ color: "#cfe1f8" }}>
-            {monthLabel(publishedMonth)}
-          </p>
-          {updatedAt && (
-            <p className="mt-1 text-xs" style={{ color: NAVY_LIGHT }}>
-              Last updated{" "}
-              {new Date(updatedAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-                timeZone: "UTC",
-              })}
-            </p>
-          )}
+    <main className="min-h-screen" style={{ background: GRADIENT }}>
+      <div className="px-6 pb-4 pt-10 sm:px-10">
+        <h1 className="text-2xl font-extrabold sm:text-3xl" style={{ color: TEXT_BRIGHT }}>
+          Al Jazeera Digital Archiving — Monthly Report
+        </h1>
+        <p className="mt-1 text-sm" style={{ color: TEXT_DIM }}>
+          {monthLabel(publishedMonth)}
+          {updatedAt &&
+            ` · Last updated ${new Date(updatedAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              timeZone: "UTC",
+            })}`}
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-6 px-4 pb-12 sm:px-6 lg:flex-row lg:items-start lg:px-10">
+        {/* Sidebar: storage capacity pie charts */}
+        {report.storageCapacities.length > 0 && (
+          <aside className="rounded-2xl bg-white p-6 shadow-xl lg:w-[340px] lg:shrink-0">
+            {report.storageCapacities.map((sc) => (
+              <CapacityPie key={sc.id} sc={sc} />
+            ))}
+          </aside>
+        )}
+
+        {/* Main content */}
+        <div className="flex-1 flex-col gap-6 flex">
+          {/* 1. Archiving Progress */}
+          <section className="rounded-2xl p-5" style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}>
+            <SectionHeading n={1} title="Archiving Progress" />
+            {report.archivingProgress.length === 0 ? (
+              <p className="text-sm" style={{ color: TEXT_DIM }}>No programs added yet.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg" style={{ border: `1px solid ${PANEL_BORDER}` }}>
+                <table className="w-full min-w-[640px] border-collapse">
+                  <thead>
+                    <tr style={{ background: HEADER_ROW }}>
+                      <Th>Program/Show</Th>
+                      <Th>Ready to Archive (TB)</Th>
+                      <Th>In Progress (TB)</Th>
+                      <Th>Archived (TB)</Th>
+                      <Th>Episodes/Projects</Th>
+                      <Th>Status</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.archivingProgress.map((row, i) => (
+                      <tr key={row.id} style={{ background: i % 2 ? ROW_ALT : "transparent" }}>
+                        <Td>
+                          <strong style={{ color: TEXT_BRIGHT }}>{row.programShow || "—"}</strong>
+                        </Td>
+                        <Td>{row.readyToArchiveTb != null ? formatNumber(row.readyToArchiveTb) : "—"}</Td>
+                        <Td>{row.inProgressTb != null ? formatNumber(row.inProgressTb) : "—"}</Td>
+                        <Td>{row.archivedTb != null ? formatNumber(row.archivedTb) : "—"}</Td>
+                        <Td>{row.episodesProjects || "—"}</Td>
+                        <Td>{row.status || "—"}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="mt-4 flex flex-col gap-1 text-sm" style={{ color: TEXT_DIM }}>
+              <p>
+                <strong style={{ color: TEXT_BRIGHT }}>Ready To Archive:</strong> Published and sent to the archiving team in the designated folder path.
+              </p>
+              <p>
+                <strong style={{ color: TEXT_BRIGHT }}>In Progress:</strong> Archiving team progress from QC &amp; checking the packages till moving them to Tapes.
+              </p>
+              <p>
+                <strong style={{ color: TEXT_BRIGHT }}>Archived:</strong> The archiving process is totally done and stored on DIVA tapes.
+              </p>
+            </div>
+          </section>
+
+          {/* 2. Server Storage Overview */}
+          <section className="rounded-2xl p-5" style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}>
+            <SectionHeading n={2} title="Server Storage Overview" />
+            {report.serverStorage.length === 0 ? (
+              <p className="text-sm" style={{ color: TEXT_DIM }}>No servers added yet.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg" style={{ border: `1px solid ${PANEL_BORDER}` }}>
+                <table className="w-full min-w-[560px] border-collapse">
+                  <thead>
+                    <tr style={{ background: HEADER_ROW }}>
+                      <Th>Server</Th>
+                      <Th>Full Capacity (TB)</Th>
+                      <Th>Space Released (TB)</Th>
+                      <Th>Total Free Now (TB)</Th>
+                      <Th>Notes</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.serverStorage.map((row, i) => (
+                      <tr key={row.id} style={{ background: i % 2 ? ROW_ALT : "transparent" }}>
+                        <Td>
+                          <strong style={{ color: TEXT_BRIGHT }}>{row.server || "—"}</strong>
+                        </Td>
+                        <Td>{row.fullCapacityTb != null ? formatNumber(row.fullCapacityTb) : "—"}</Td>
+                        <Td>{row.spaceReleasedTb != null ? formatNumber(row.spaceReleasedTb) : "—"}</Td>
+                        <Td>{row.totalFreeNowTb != null ? formatNumber(row.totalFreeNowTb) : "—"}</Td>
+                        <Td>{row.notes || "—"}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {/* 3. Tapes, Capacity, and Upcoming Milestones */}
+          <section className="rounded-2xl p-5" style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}>
+            <SectionHeading n={3} title="Tapes, Capacity, and Upcoming Milestones" />
+            <div className="flex flex-col gap-2 text-sm" style={{ color: TEXT_DIM }}>
+              <p>
+                <strong style={{ color: TEXT_BRIGHT }}>Current Archive Capacity:</strong>{" "}
+                {report.milestones.currentArchiveCapacity || "—"}
+              </p>
+              <p>
+                <strong style={{ color: TEXT_BRIGHT }}>New Capacity Expected:</strong>{" "}
+                {report.milestones.newCapacityExpected || "—"}
+              </p>
+              <p>
+                <strong style={{ color: TEXT_BRIGHT }}>Next Migration Phase:</strong>{" "}
+                {report.milestones.nextMigrationPhase || "—"}
+              </p>
+            </div>
+          </section>
+
+          {/* 4. Active Issues & Actions */}
+          <section className="rounded-2xl p-5" style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}>
+            <SectionHeading n={4} title="Active Issues & Actions" />
+            {report.issues.length === 0 ? (
+              <p className="text-sm" style={{ color: TEXT_DIM }}>No open issues.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg" style={{ border: `1px solid ${PANEL_BORDER}` }}>
+                <table className="w-full min-w-[600px] border-collapse">
+                  <thead>
+                    <tr style={{ background: HEADER_ROW }}>
+                      <Th>Issue</Th>
+                      <Th>Priority</Th>
+                      <Th>Action / Owner</Th>
+                      <Th>ETA / Status</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.issues.map((row, i) => (
+                      <tr key={row.id} style={{ background: i % 2 ? ROW_ALT : "transparent" }}>
+                        <Td>
+                          <strong style={{ color: TEXT_BRIGHT }}>{row.issue || "—"}</strong>
+                        </Td>
+                        <Td>
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold"
+                            style={{ background: "rgba(255,255,255,0.1)", color: TEXT_BRIGHT }}
+                          >
+                            <span className="h-2 w-2 rounded-full" style={{ background: PRIORITY_COLOR[row.priority] }} />
+                            {row.priority}
+                          </span>
+                        </Td>
+                        <Td>{row.actionOwner || "—"}</Td>
+                        <Td>{row.etaStatus || "—"}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </div>
-        <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${NAVY_LIGHT}, ${NAVY})` }} />
-      </header>
-
-      <div className="mx-auto max-w-5xl px-6 py-10">
-        <div className="flex flex-col gap-8">
-          {REPORT_ORDER.map((teamKey) => {
-            const team = getTeam(teamKey);
-            if (!team) return null;
-            const data = allData[teamKey] ?? {};
-            const accent = ACCENT_HEX[team.accent];
-            const track = TRACK_HEX[team.accent];
-
-            const isPublishing = team.key === "publishing";
-            const max = isPublishing ? 0 : Math.max(1, ...team.fields.map((f) => data[f.key] ?? 0));
-
-            return (
-              <section
-                key={team.key}
-                className="rounded-xl shadow-sm"
-                style={{ background: CARD_BG, boxShadow: "0 1px 3px rgba(17,24,39,0.06), 0 1px 2px rgba(17,24,39,0.04)" }}
-              >
-                <div className="flex items-center gap-3 border-b p-5" style={{ borderColor: BORDER }}>
-                  <TeamBadge initial={team.name.charAt(0)} accent={accent} />
-                  <h2 className="text-xl font-bold" style={{ color: INK_PRIMARY }}>
-                    {team.name}
-                  </h2>
-                </div>
-
-                <div className="p-5">
-                  {isPublishing ? (
-                    <>
-                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                        {team.fields.map((field) => (
-                          <StatTile key={field.key} label={field.label} value={data[field.key]} accent={accent} />
-                        ))}
-                      </div>
-                      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <StatTile
-                          label="Total Assets in CMS (movies and episodes)"
-                          value={publishingTotal(data)}
-                          accent={accent}
-                        />
-                        <CompositionDonut
-                          a={data.episodesInCms ?? 0}
-                          b={data.moviesInCms ?? 0}
-                          aLabel="Episodes"
-                          bLabel="Movies"
-                          aColor={accent}
-                          bColor={NAVY_LIGHT}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-                      {team.fields.map((field) => (
-                        <BarRow
-                          key={field.key}
-                          label={field.label}
-                          value={data[field.key]}
-                          max={max}
-                          accent={accent}
-                          track={track}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-
-        <footer className="mt-10 text-center text-xs" style={{ color: INK_MUTED }}>
-          {TEAMS.length} teams reporting
-        </footer>
       </div>
     </main>
   );
