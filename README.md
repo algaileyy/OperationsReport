@@ -1,14 +1,20 @@
 # Operations Report
 
-A small internal tool with two pages:
+Two ways in:
 
-- **`/input`** — password-protected form where the team enters each month's
-  numbers per team, and controls which month is currently "live."
-- **`/report`** — public page that shows whichever month is marked live,
-  grouped into stat tiles by team.
+- **Desktop app** (`desktop/`) — the app your team actually uses to enter
+  numbers. A portable `.exe`, no installer, same pattern as `finfo`. It
+  opens the hosted `/input` page in its own window.
+- **`/report`** — the public link anyone can open in a browser to see
+  whichever month is currently marked live, grouped into stat tiles by
+  team.
 
-Both pages render from a single field list in [`lib/teams.ts`](lib/teams.ts),
-so the input form and the public report can never drift out of sync.
+Both talk to one deployment (Vercel, recommended) and one database, so
+every teammate's desktop app and the public report link always agree.
+
+Both the input form and the report render from a single field list in
+[`lib/teams.ts`](lib/teams.ts), so they can't drift out of sync with each
+other.
 
 ## Teams & fields
 
@@ -29,86 +35,38 @@ automatically. To change the order teams appear in on the public report,
 edit `REPORT_ORDER` in the same file.
 
 The data layer uses the standard `pg` (node-postgres) driver against
-`POSTGRES_URL`, so it works against any Postgres — local, NAS-hosted, or a
-cloud provider — not just Vercel/Neon.
+`POSTGRES_URL`, so it works against Vercel/Neon, a NAS, or a local
+Postgres — set `POSTGRES_SSL=true` for hosted providers that require it
+(Neon does), leave it unset for a local instance.
 
-## Currently running (temporary, on a workstation)
+## Deploying the website (Vercel + Postgres)
 
-This app is running right now on `algaileyy`'s Windows workstation, at
-`http://<workstation-LAN-IP>:3000`, until it's moved to the NAS. Everything
-was installed **without a system-wide installer** — Node.js and PostgreSQL
-were unzipped as portable binaries under `D:\AI\tools`, so nothing outside
-that folder and this repo was touched:
+1. **Import the repo**: [vercel.com/new](https://vercel.com/new) → import
+   `algaileyy/OperationsReport`. Framework preset auto-detects as Next.js.
+2. **Add a database**: in the project, *Storage* → *Create Database* →
+   Postgres (Neon) → connect it. Vercel auto-injects `POSTGRES_URL` and
+   friends — also add `POSTGRES_SSL=true` manually (Neon requires SSL, and
+   this app doesn't assume it by default the way `@vercel/postgres` would).
+3. **Set the two auth env vars** under *Settings → Environment Variables*:
+   - `INPUT_PASSWORD` — shared password for `/input`.
+   - `AUTH_SECRET` — long random string, signs session cookies. Generate
+     with: `node -e "console.log(crypto.randomUUID() + crypto.randomUUID())"`
+4. **Deploy.** Tables are created automatically on first request.
+5. Copy the resulting URL (e.g. `https://operations-report.vercel.app`) —
+   that's what goes into the desktop app's setup screen, and what you
+   share as the `/report` link.
 
-| Path | What it is |
-|---|---|
-| `D:\AI\tools\node-v24.19.0-win-x64\` | Portable Node.js runtime |
-| `D:\AI\tools\pgsql\` | Portable PostgreSQL 17 binaries |
-| `D:\AI\tools\pgdata\` | The actual database files (this is your data) |
-| `D:\AI\tools\start-operations-report.bat` | Starts Postgres + the app |
-| `D:\AI\tools\stop-operations-report.bat` | Stops both |
-| `D:\AI\tools\status-operations-report.bat` | Checks whether both are running |
-| `D:\AI\tools\logs\` | `app.log` and `postgres.log` |
-| Scheduled Task `OperationsReportServer` | Runs the start script automatically at logon |
+## The desktop app
 
-Credentials and the DB connection string live in `.env.local` in this repo
-folder (gitignored — never pushed to GitHub):
-- `INPUT_PASSWORD` — shared password for `/input`. Change it here, then
-  re-run `stop-operations-report.bat` + `start-operations-report.bat` (or
-  just log off/on) to pick it up.
-- `AUTH_SECRET` — signs session cookies. Don't share this one.
-- `POSTGRES_URL` — points at the local Postgres on port `5433`.
+See [`desktop/README.md`](desktop/README.md) for how it works and how to
+build it. Short version: `cd desktop && npm install && npm run package`
+produces a portable build; zip it and attach it to a GitHub Release the
+same way `finfo-portable.zip` is distributed, so teammates can download
+and double-click without installing anything.
 
-**To make it reachable by teammates**, an inbound firewall rule for port
-3000 is needed, and that requires admin rights this session doesn't have.
-Run this once in an **elevated** PowerShell (right-click → Run as
-administrator):
-
-```powershell
-netsh advfirewall firewall add rule name="Operations Report (3000)" dir=in action=allow protocol=TCP localport=3000
-```
-
-After that, teammates on the same network reach the report at
-`http://<that-workstation-IP>:3000/report` and the input form at
-`http://<that-workstation-IP>:3000/input`.
-
-This setup is HTTP only (no TLS) and lives on one person's workstation, so
-treat it as a bridge to the NAS, not the final home for this.
-
-## Moving to the NAS later
-
-1. Copy this repo (or `git clone` it fresh from GitHub) onto the NAS.
-2. Get Postgres running on the NAS — most NAS platforms (Synology, QNAP,
-   TrueNAS, Unraid) support this via a Docker container far more easily
-   than a manual binary install.
-3. Migrate the data: `pg_dump` the workstation database and restore it into
-   the NAS one, so you don't lose whatever's been entered before the move:
-   ```bash
-   # on the workstation
-   D:\AI\tools\pgsql\bin\pg_dump.exe -h localhost -p 5433 -U opsapp -d opsreport -Fc -f opsreport.dump
-   # copy opsreport.dump to the NAS, then
-   pg_restore -h <nas-host> -U opsapp -d opsreport --create opsreport.dump
-   ```
-4. Point `POSTGRES_URL` in the NAS's `.env.local` at the NAS's own Postgres,
-   set `INPUT_PASSWORD` / `AUTH_SECRET` there too, `npm install && npm run
-   build && npm run start`.
-5. Retire the workstation copy: run `stop-operations-report.bat`, delete
-   the Scheduled Task (`schtasks /delete /tn OperationsReportServer`), and
-   remove the temporary firewall rule.
-
-Ask for help with this step when you're ready — happy to script the dump/
-restore and the NAS-side setup once you know which NAS platform and whether
-it runs Docker.
-
-## Local development setup (any machine)
-
-```bash
-npm install
-cp .env.example .env.local   # then fill in the values
-npm run dev
-```
-
-Open http://localhost:3000.
+The zip wasn't committed here (it's ~110 MB of Electron runtime) — build
+it yourself with the steps above, or ask for the one already built during
+this session.
 
 ## How "which month is live" works
 
@@ -118,15 +76,47 @@ month's numbers early without affecting what's currently public. The
 selected there is the one `/report` displays, for every team, until someone
 changes it again.
 
+## Local development (any machine)
+
+```bash
+npm install
+cp .env.example .env.local   # then fill in the values
+npm run dev
+```
+
+Open http://localhost:3000.
+
+## Temporary workstation hosting (fallback, not the plan going forward)
+
+Before landing on Vercel, this was briefly set up to run directly on a
+team workstation — Node.js and Postgres installed portably under
+`D:\AI\tools`, started via a Scheduled Task (`OperationsReportServer`).
+That's still there and working, but it depends on one person's machine
+staying on and reachable, needs a manually-opened firewall port, and has
+no TLS. Once the Vercel deployment is live and the desktop app points at
+it, that workstation setup should be decommissioned:
+
+```powershell
+D:\AI\tools\stop-operations-report.bat
+schtasks /delete /tn OperationsReportServer /f
+netsh advfirewall firewall delete rule name="Operations Report (3000)"
+```
+
+(Only run the last line if that firewall rule was ever actually added —
+it required admin rights that weren't available when this was set up.)
+
 ## Verified so far
 
 - `npm run build` compiles cleanly, no type errors.
-- Full flow tested via the API: signed in, saved numbers for two teams,
-  published a month, and confirmed `/report` renders them correctly
+- Full data flow tested via the API: signed in, saved numbers for two
+  teams, published a month, confirmed `/report` renders them correctly
   (including the auto-calculated CMS total).
-- Not yet verified: the actual UI in a browser (only tested through curl so
-  far), and dark mode. Worth a manual click-through before relying on it
-  for a real monthly report.
-- Also worth a second look: the field mapping for Media Management in
+- The desktop app was packaged successfully (Electron 33, portable win32
+  build), but this environment has no access to an interactive Windows
+  desktop session, so the window itself has **not been visually
+  confirmed** — worth actually opening it once before handing it to the
+  team.
+- Not yet deployed to Vercel — that needs your account.
+- Worth a second look: the field mapping for Media Management in
   `lib/teams.ts` — it was reconciled from two slightly different lists in
   the original spec.

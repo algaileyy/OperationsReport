@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Operations Report — Setup</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --surface: #fcfcfb;
+    --ink-primary: #0b0b0b;
+    --ink-secondary: #52514e;
+    --border: rgba(11, 11, 11, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface: #1a1a19;
+      --ink-primary: #ffffff;
+      --ink-secondary: #c3c2b7;
+      --border: rgba(255, 255, 255, 0.12);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--surface);
+    color: var(--ink-primary);
+  }
+  .card { width: 380px; display: flex; flex-direction: column; gap: 12px; }
+  h1 { font-size: 18px; margin: 0; }
+  p { margin: 0; font-size: 13px; color: var(--ink-secondary); }
+  input {
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-primary);
+  }
+  button {
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    background: #2a78d6;
+    color: white;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.6; cursor: default; }
+  .error { color: #d03b3b; font-size: 13px; min-height: 16px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Connect to Operations Report</h1>
+    <p>Enter the report website's address (ask whoever set it up if you don't have it — it looks like <code>https://operations-report.vercel.app</code>).</p>
+    <input id="url" type="text" placeholder="https://operations-report.vercel.app" />
+    <div class="error" id="error"></div>
+    <button id="save">Save & Connect</button>
+  </div>
+
+  <script>
+    const input = document.getElementById("url");
+    const button = document.getElementById("save");
+    const error = document.getElementById("error");
+
+    window.desktop.getCurrentUrl().then((url) => {
+      if (url) input.value = url;
+    });
+
+    async function submit() {
+      error.textContent = "";
+      const url = input.value.trim();
+      if (!url) {
+        error.textContent = "Enter a URL first.";
+        return;
+      }
+      button.disabled = true;
+      const result = await window.desktop.saveServerUrl(url);
+      button.disabled = false;
+      if (!result.ok) {
+        error.textContent = result.error;
+      }
+    }
+
+    button.addEventListener("click", submit);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submit();
+    });
+  </script>
+</body>
+</html>
