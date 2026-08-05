@@ -7,6 +7,8 @@ import { normalizeReport, type MonthlyReport } from "./report";
 declare global {
   // eslint-disable-next-line no-var
   var __pgPool: Pool | undefined;
+  // eslint-disable-next-line no-var
+  var __schemaReady: Promise<void> | undefined;
 }
 
 function getPool(): Pool {
@@ -22,12 +24,10 @@ function getPool(): Pool {
   return global.__pgPool;
 }
 
-let schemaReady: Promise<void> | null = null;
-
-/** Idempotent — safe to call on every request; only does work once per cold start. */
+/** Idempotent — safe to call on every request; only does work once per process. */
 export function ensureSchema(): Promise<void> {
-  if (!schemaReady) {
-    schemaReady = (async () => {
+  if (!global.__schemaReady) {
+    global.__schemaReady = (async () => {
       const pool = getPool();
       await pool.query(`
         CREATE TABLE IF NOT EXISTS monthly_reports (
@@ -44,7 +44,7 @@ export function ensureSchema(): Promise<void> {
       `);
     })();
   }
-  return schemaReady;
+  return global.__schemaReady!;
 }
 
 export async function getMonthlyReport(month: string): Promise<MonthlyReport | null> {

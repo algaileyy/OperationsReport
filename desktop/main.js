@@ -1,3 +1,10 @@
+// Guard: this file must be run by Electron, not plain Node.js.
+// Running `node main.js` directly causes ipcMain to be undefined.
+if (!process.versions.electron) {
+  console.error("Error: run with Electron, not Node.js.\n  npm run start   (development)\n  or double-click Operations Report.exe");
+  process.exit(1);
+}
+
 const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
