@@ -5,7 +5,7 @@ import MonthPicker from "../MonthPicker";
 import { monthLabel } from "@/lib/months";
 import { TEAMS, type TeamData } from "@/lib/teams";
 import { emptyReport, type MonthlyReport } from "@/lib/report";
-import { formatNumber } from "@/lib/format";
+import { formatFieldValue } from "@/lib/format";
 
 const ACCENT_HEX: Record<string, string> = {
   blue: "#2a78d6",
@@ -14,7 +14,7 @@ const ACCENT_HEX: Record<string, string> = {
   violet: "#4a3aa7",
 };
 
-function DeltaCell({ delta, pct }: { delta: number; pct: number | null }) {
+function DeltaCell({ delta, pct, unit }: { delta: number; pct: number | null; unit?: string }) {
   if (delta === 0) {
     return <span style={{ color: "var(--ink-muted)" }}>—</span>;
   }
@@ -22,7 +22,7 @@ function DeltaCell({ delta, pct }: { delta: number; pct: number | null }) {
   const color = up ? "#2a78d6" : "#e34948";
   return (
     <span style={{ color }} className="font-medium">
-      {up ? "▲" : "▼"} {formatNumber(Math.abs(delta))}
+      {up ? "▲" : "▼"} {formatFieldValue(Math.abs(delta), unit)}
       {pct !== null && <span className="ml-1 text-xs opacity-80">({up ? "+" : ""}{pct.toFixed(1)}%)</span>}
     </span>
   );
@@ -87,12 +87,14 @@ export default function CompareClient({
                 label: g.label,
                 a: g.sumKeys.reduce((s, k) => s + (a[k] ?? 0), 0),
                 b: g.sumKeys.reduce((s, k) => s + (b[k] ?? 0), 0),
+                unit: undefined as string | undefined,
                 bold: true,
               })),
               ...team.fields.map((f) => ({
                 label: f.label,
                 a: a[f.key] ?? 0,
                 b: b[f.key] ?? 0,
+                unit: f.unit,
                 bold: false,
               })),
             ];
@@ -126,13 +128,13 @@ export default function CompareClient({
                               {row.label}
                             </td>
                             <td className="p-1.5" style={{ color: "var(--ink-secondary)" }}>
-                              {formatNumber(row.a)}
+                              {formatFieldValue(row.a, row.unit)}
                             </td>
                             <td className="p-1.5" style={{ color: "var(--ink-secondary)" }}>
-                              {formatNumber(row.b)}
+                              {formatFieldValue(row.b, row.unit)}
                             </td>
                             <td className="p-1.5">
-                              <DeltaCell delta={delta} pct={pct} />
+                              <DeltaCell delta={delta} pct={pct} unit={row.unit} />
                             </td>
                           </tr>
                         );

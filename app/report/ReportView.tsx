@@ -1,5 +1,5 @@
 import { monthLabel } from "@/lib/months";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, formatFieldValue } from "@/lib/format";
 import { TEAMS, type TeamConfig, type TeamData } from "@/lib/teams";
 import type { MonthlyReport } from "@/lib/report";
 import GroupRow from "./GroupRow";
@@ -39,10 +39,27 @@ function shadeSteps(hex: string, count: number): string[] {
   return Array.from({ length: count }, (_, i) => mixWithWhite(hex, (i / (count - 1)) * 0.6));
 }
 
-function SectionHeading({ n, title }: { n: number; title: string }) {
+/** The one headline number each team leads with in the executive summary. */
+function headlineFor(team: TeamConfig, data: TeamData): { label: string; value: number; unit?: string } {
+  switch (team.key) {
+    case "publishing":
+    case "mediaManagement": {
+      const g = team.groups![0];
+      return { label: g.label, value: g.sumKeys.reduce((s, k) => s + (data[k] ?? 0), 0) };
+    }
+    case "archivingSupport":
+      return { label: "Archived", value: data.archived ?? 0, unit: "TB" };
+    case "mediaIngest":
+      return { label: "Total Assets Processed (In GCP)", value: data.totalAssetsProcessed ?? 0 };
+    default:
+      return { label: team.name, value: 0 };
+  }
+}
+
+function SectionHeading({ n, title }: { n?: number; title: string }) {
   return (
     <h2 className="mb-3 flex items-baseline gap-2 text-lg font-bold" style={{ color: TEXT_BRIGHT }}>
-      <span style={{ color: ACCENT_CYAN }}>{n}.</span>
+      {n != null && <span style={{ color: ACCENT_CYAN }}>{n}.</span>}
       {title}
     </h2>
   );
@@ -64,15 +81,59 @@ function Td({ children }: { children: React.ReactNode }) {
   );
 }
 
+function ExecutiveSummary({ report }: { report: MonthlyReport }) {
+  const notes = TEAMS.map((t) => ({ team: t, note: report.notes?.[t.key] })).filter((n) => n.note);
+
+  return (
+    <section className="mb-6 rounded-2xl p-5" style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}>
+      <SectionHeading title="Executive Summary" />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {TEAMS.map((team) => {
+          const accent = ACCENT_HEX[team.accent];
+          const headline = headlineFor(team, report.teams[team.key] ?? {});
+          return (
+            <div key={team.key} className="rounded-lg p-4" style={{ background: "rgba(0,0,0,0.15)" }}>
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold" style={{ color: accent }}>
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
+                {team.name}
+              </p>
+              <p className="stat-value text-2xl font-extrabold" style={{ color: TEXT_BRIGHT }}>
+                {formatFieldValue(headline.value, headline.unit)}
+              </p>
+              <p className="text-xs" style={{ color: TEXT_DIM }}>
+                {headline.label}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      {notes.length > 0 && (
+        <ul className="mt-4 flex flex-col gap-1.5 text-sm" style={{ color: TEXT_DIM }}>
+          {notes.map(({ team, note }) => (
+            <li key={team.key}>
+              <strong style={{ color: TEXT_BRIGHT }}>{team.name}:</strong> {note}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function TeamPie({ team, data }: { team: TeamConfig; data: TeamData }) {
   const accent = ACCENT_HEX[team.accent];
-  const fields = team.fields.map((f) => ({ label: f.label, value: data[f.key] ?? 0 }));
-  const colors = shadeSteps(accent, fields.length);
-  const sum = fields.reduce((s, f) => s + f.value, 0);
+  // Only unitless fields are comparable counts and can share one pie; a
+  // field with a unit (e.g. TB) isn't the same kind of quantity, so it's
+  // shown as its own callout instead of a slice.
+  const pieFields = team.fields.filter((f) => !f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0 }));
+  const calloutFields = team.fields.filter((f) => f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit }));
+
+  const colors = shadeSteps(accent, pieFields.length);
+  const sum = pieFields.reduce((s, f) => s + f.value, 0);
   const denom = sum || 1;
 
   let cumulative = 0;
-  const stops = fields
+  const stops = pieFields
     .map((f, i) => {
       const startDeg = (cumulative / denom) * 360;
       cumulative += f.value;
@@ -82,31 +143,35 @@ function TeamPie({ team, data }: { team: TeamConfig; data: TeamData }) {
     .join(", ");
 
   return (
-    <div className="mb-6 last:mb-0">
-      <div className="mb-2 flex items-baseline justify-between gap-3">
+    <div className="rounded-xl bg-white p-5 shadow-xl print:shadow-none">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
         <p className="text-sm font-bold" style={{ color: accent }}>
           {team.name}
         </p>
-        <p className="shrink-0 text-lg font-bold" style={{ color: "#0b1d27" }}>
-          {formatNumber(sum)}
-        </p>
+        {calloutFields.map((f) => (
+          <p key={f.label} className="text-sm" style={{ color: "#33454f" }}>
+            {f.label}: <strong style={{ color: "#0b1d27" }}>{formatFieldValue(f.value, f.unit)}</strong>
+          </p>
+        ))}
       </div>
-      <div className="flex items-center gap-4">
-        <div
-          className="h-28 w-28 shrink-0 rounded-full"
-          style={{ background: sum > 0 ? `conic-gradient(${stops})` : "#eef0f4" }}
-        />
-        <div className="flex flex-col gap-1 text-xs" style={{ color: "#33454f" }}>
-          {fields.map((f, i) => (
-            <div key={f.label} className="flex items-center gap-1.5">
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors[i] }} />
-              <span>
-                {f.label}: <strong>{formatNumber(f.value)}</strong>
-              </span>
-            </div>
-          ))}
+      {pieFields.length > 0 && (
+        <div className="flex items-center gap-4">
+          <div
+            className="h-28 w-28 shrink-0 rounded-full"
+            style={{ background: sum > 0 ? `conic-gradient(${stops})` : "#eef0f4" }}
+          />
+          <div className="flex flex-col gap-1 text-xs" style={{ color: "#33454f" }}>
+            {pieFields.map((f, i) => (
+              <div key={f.label} className="flex items-center gap-1.5">
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors[i] }} />
+                <span>
+                  {f.label}: <strong>{formatNumber(f.value)}</strong>
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -145,16 +210,10 @@ export default function ReportView({
         <ExportButton />
       </div>
 
-      <div className="flex flex-col gap-6 px-4 pb-12 sm:px-6 lg:flex-row lg:items-start lg:px-10">
-        {/* Sidebar: one pie chart per team */}
-        <aside className="rounded-2xl bg-white p-6 shadow-xl lg:w-[340px] lg:shrink-0 print:shadow-none">
-          {TEAMS.map((team) => (
-            <TeamPie key={team.key} team={team} data={report.teams[team.key] ?? {}} />
-          ))}
-        </aside>
+      <div className="mx-auto max-w-4xl px-4 pb-12 sm:px-6 lg:px-10">
+        <ExecutiveSummary report={report} />
 
-        {/* Main content: one table section per team */}
-        <div className="flex flex-1 flex-col gap-6">
+        <div className="flex flex-col gap-6">
           {TEAMS.map((team, idx) => {
             const teamData = report.teams[team.key] ?? {};
             const groups = team.groups ?? [];
@@ -189,7 +248,7 @@ export default function ReportView({
                             <Td>
                               <strong style={{ color: TEXT_BRIGHT }}>{field.label}</strong>
                             </Td>
-                            <Td>{formatNumber(teamData[field.key] ?? 0)}</Td>
+                            <Td>{formatFieldValue(teamData[field.key] ?? 0, field.unit)}</Td>
                           </tr>
                         );
                       })}
@@ -201,6 +260,9 @@ export default function ReportView({
                     {note}
                   </p>
                 )}
+                <div className="mt-4">
+                  <TeamPie team={team} data={teamData} />
+                </div>
               </section>
             );
           })}

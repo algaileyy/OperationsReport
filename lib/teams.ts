@@ -4,6 +4,10 @@
 export type FieldConfig = {
   key: string;
   label: string;
+  /** e.g. "TB" — appended to the formatted value (e.g. "105TB"). Fields with
+   * a unit are shown as standalone callouts rather than pie-chart slices,
+   * since a unit means they aren't a comparable count with the rest. */
+  unit?: string;
 };
 
 /**
@@ -74,9 +78,9 @@ export const TEAMS: TeamConfig[] = [
     name: "Archiving & Production Support Team",
     accent: "aqua",
     fields: [
-      { key: "revisioning", label: "Revisioning" },
       { key: "textlessCleanQcCompleted", label: "Textless/Clean QC Completed" },
-      { key: "archived", label: "Archived" },
+      { key: "archived", label: "Archived", unit: "TB" },
+      { key: "revisioning", label: "Re-versioning" },
     ],
   },
   {

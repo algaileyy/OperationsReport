@@ -174,6 +174,7 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
                     <label key={field.key} className="flex flex-col gap-1">
                       <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                         {field.label}
+                        {field.unit && ` (${field.unit})`}
                       </span>
                       <input
                         type="number"
