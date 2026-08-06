@@ -23,12 +23,25 @@ export type FieldGroup = {
   detailFieldKeys: string[];
 };
 
+/**
+ * A metric tracked per-source instead of as one flat number (e.g. Archived
+ * Projects: Atheer 7, AJ360 25). Sources are entered freely on /input, not
+ * a fixed list, so a team can track whichever projects are active that
+ * month. Rendered as a collapsible total row (same as FieldGroup) and as
+ * one more pie slice.
+ */
+export type SourceBreakdownConfig = {
+  key: string;
+  label: string;
+};
+
 export type TeamConfig = {
   key: string;
   name: string;
   accent: "blue" | "orange" | "aqua" | "violet";
   fields: FieldConfig[];
   groups?: FieldGroup[];
+  sourceBreakdowns?: SourceBreakdownConfig[];
 };
 
 export const TEAMS: TeamConfig[] = [
@@ -82,6 +95,7 @@ export const TEAMS: TeamConfig[] = [
       { key: "archived", label: "Archived", unit: "TB" },
       { key: "revisioning", label: "Re-versioning" },
     ],
+    sourceBreakdowns: [{ key: "archivedProjects", label: "Archived Projects" }],
   },
   {
     key: "mediaIngest",

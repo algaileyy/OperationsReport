@@ -6,7 +6,7 @@ import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import { monthLabel } from "@/lib/months";
 import { TEAMS, publishingTotal } from "@/lib/teams";
-import type { MonthlyReport } from "@/lib/report";
+import type { MonthlyReport, SourceEntry } from "@/lib/report";
 
 const ACCENT_HEX: Record<string, string> = {
   blue: "#2a78d6",
@@ -20,6 +20,10 @@ const inputStyle = {
   background: "var(--surface)",
   color: "var(--ink-primary)",
 } as const;
+
+function newId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
 
 type Props = {
   publishedMonth: string | null;
@@ -67,6 +71,16 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
     setData((d) => ({
       ...d,
       notes: { ...d.notes, [teamKey]: value },
+    }));
+  }
+
+  function setSourceEntries(teamKey: string, breakdownKey: string, entries: SourceEntry[]) {
+    setData((d) => ({
+      ...d,
+      sourceBreakdowns: {
+        ...d.sourceBreakdowns,
+        [teamKey]: { ...d.sourceBreakdowns[teamKey], [breakdownKey]: entries },
+      },
     }));
   }
 
@@ -201,6 +215,71 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
                     </div>
                   )}
                 </div>
+
+                {(team.sourceBreakdowns ?? []).map((sb) => {
+                  const entries = data.sourceBreakdowns[team.key]?.[sb.key] ?? [];
+                  return (
+                    <div key={sb.key} className="mt-4">
+                      <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                        {sb.label} (by source)
+                      </span>
+                      <div className="mt-1 flex flex-col gap-2">
+                        {entries.map((entry) => (
+                          <div key={entry.id} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              placeholder="Source, e.g. Atheer"
+                              value={entry.source}
+                              onChange={(e) =>
+                                setSourceEntries(
+                                  team.key,
+                                  sb.key,
+                                  entries.map((x) => (x.id === entry.id ? { ...x, source: e.target.value } : x))
+                                )
+                              }
+                              className="flex-1 rounded-md border px-3 py-2 text-sm"
+                              style={inputStyle}
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              value={entry.count}
+                              onChange={(e) =>
+                                setSourceEntries(
+                                  team.key,
+                                  sb.key,
+                                  entries.map((x) => (x.id === entry.id ? { ...x, count: Number(e.target.value) || 0 } : x))
+                                )
+                              }
+                              className="w-24 rounded-md border px-3 py-2 text-sm"
+                              style={inputStyle}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setSourceEntries(team.key, sb.key, entries.filter((x) => x.id !== entry.id))}
+                              aria-label="Remove source"
+                              className="px-2 text-sm"
+                              style={{ color: "#d03b3b" }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSourceEntries(team.key, sb.key, [...entries, { id: newId("src"), source: "", count: 0 }])
+                          }
+                          className="self-start rounded-md border px-3 py-1.5 text-sm font-medium"
+                          style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
+                        >
+                          + Add source
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
                 <label className="mt-4 flex flex-col gap-1">
                   <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                     Notes

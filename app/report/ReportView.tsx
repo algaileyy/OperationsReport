@@ -1,7 +1,7 @@
 import { monthLabel } from "@/lib/months";
 import { formatNumber, formatFieldValue } from "@/lib/format";
 import { TEAMS, type TeamConfig, type TeamData } from "@/lib/teams";
-import type { MonthlyReport } from "@/lib/report";
+import type { MonthlyReport, SourceEntry } from "@/lib/report";
 import GroupRow from "./GroupRow";
 import ExportButton from "./ExportButton";
 
@@ -120,12 +120,24 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
   );
 }
 
-function TeamPie({ team, data }: { team: TeamConfig; data: TeamData }) {
+function TeamPie({
+  team,
+  data,
+  sourceTotals = [],
+}: {
+  team: TeamConfig;
+  data: TeamData;
+  /** Each source-breakdown's total, added as one more slice alongside the plain fields. */
+  sourceTotals?: { label: string; value: number }[];
+}) {
   const accent = ACCENT_HEX[team.accent];
   // Only unitless fields are comparable counts and can share one pie; a
   // field with a unit (e.g. TB) isn't the same kind of quantity, so it's
   // shown as its own callout instead of a slice.
-  const pieFields = team.fields.filter((f) => !f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0 }));
+  const pieFields = [
+    ...team.fields.filter((f) => !f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0 })),
+    ...sourceTotals,
+  ];
   const calloutFields = team.fields.filter((f) => f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit }));
 
   const colors = shadeSteps(accent, pieFields.length);
@@ -221,6 +233,11 @@ export default function ReportView({
             const plainFields = team.fields.filter((f) => !groupedKeys.has(f.key));
             const fieldLabel = (key: string) => team.fields.find((f) => f.key === key)?.label ?? key;
             const note = report.notes?.[team.key];
+            const sourceBreakdowns = team.sourceBreakdowns ?? [];
+            const sourceTotals = sourceBreakdowns.map((sb) => {
+              const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
+              return { label: sb.label, value: entries.reduce((s, e) => s + e.count, 0) };
+            });
             let rowIndex = 0;
 
             return (
@@ -240,6 +257,13 @@ export default function ReportView({
                         const detail = group.detailFieldKeys.map((k) => ({ label: fieldLabel(k), value: teamData[k] ?? 0 }));
                         const alt = rowIndex++ % 2 === 1;
                         return <GroupRow key={group.key} label={group.label} total={total} detail={detail} altRow={alt} />;
+                      })}
+                      {sourceBreakdowns.map((sb) => {
+                        const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
+                        const total = entries.reduce((s, e) => s + e.count, 0);
+                        const detail = entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
+                        const alt = rowIndex++ % 2 === 1;
+                        return <GroupRow key={sb.key} label={sb.label} total={total} detail={detail} altRow={alt} />;
                       })}
                       {plainFields.map((field) => {
                         const alt = rowIndex++ % 2 === 1;
@@ -261,7 +285,7 @@ export default function ReportView({
                   </p>
                 )}
                 <div className="mt-4">
-                  <TeamPie team={team} data={teamData} />
+                  <TeamPie team={team} data={teamData} sourceTotals={sourceTotals} />
                 </div>
               </section>
             );
