@@ -21,6 +21,8 @@ export type FieldGroup = {
   label: string;
   sumKeys: string[];
   detailFieldKeys: string[];
+  /** e.g. "TB" — when set, the total and its detail rows are formatted with this unit. */
+  unit?: string;
 };
 
 /**
@@ -91,11 +93,28 @@ export const TEAMS: TeamConfig[] = [
     name: "Archiving & Production Support Team",
     accent: "aqua",
     fields: [
-      { key: "textlessCleanQcCompleted", label: "Textless/Clean QC Completed" },
-      { key: "archived", label: "Archived", unit: "TB" },
+      { key: "projectFilesChecked", label: "Project files checked" },
+      { key: "textlessCleansCompleted", label: "Textless/cleans completed" },
+      { key: "archivedAtheer", label: "Atheer", unit: "TB" },
+      { key: "archivedDohaDebates", label: "Doha Debates", unit: "TB" },
+      { key: "archivedSadeem", label: "Sadeem", unit: "TB" },
       { key: "revisioning", label: "Re-versioning" },
     ],
-    sourceBreakdowns: [{ key: "archivedProjects", label: "Archived Projects" }],
+    groups: [
+      {
+        key: "totalQcCompleted",
+        label: "Total Quality Control Completed",
+        sumKeys: ["projectFilesChecked", "textlessCleansCompleted"],
+        detailFieldKeys: ["projectFilesChecked", "textlessCleansCompleted"],
+      },
+      {
+        key: "archived",
+        label: "Archived",
+        sumKeys: ["archivedAtheer", "archivedDohaDebates", "archivedSadeem"],
+        detailFieldKeys: ["archivedAtheer", "archivedDohaDebates", "archivedSadeem"],
+        unit: "TB",
+      },
+    ],
   },
   {
     key: "mediaIngest",

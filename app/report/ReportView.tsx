@@ -33,10 +33,67 @@ function mixWithWhite(hex: string, amount: number): string {
   return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
-/** N shades of one team's accent hue, full color first, lightening toward white. */
+function hexToHsl(hex: string): [number, number, number] {
+  const [r0, g0, b0] = hexToRgb(hex);
+  const r = r0 / 255, g = g0 / 255, b = b0 / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return [0, 0, l * 100];
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h: number;
+  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return [h * 60, s * 100, l * 100];
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const hh = ((h % 360) + 360) % 360 / 360;
+  const ss = s / 100;
+  const ll = l / 100;
+  const hue2rgb = (p: number, q: number, t: number) => {
+    let tt = t;
+    if (tt < 0) tt += 1;
+    if (tt > 1) tt -= 1;
+    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+    if (tt < 1 / 2) return q;
+    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+    return p;
+  };
+  let r: number, g: number, b: number;
+  if (ss === 0) {
+    r = g = b = ll;
+  } else {
+    const q = ll < 0.5 ? ll * (1 + ss) : ll + ss - ll * ss;
+    const p = 2 * ll - q;
+    r = hue2rgb(p, q, hh + 1 / 3);
+    g = hue2rgb(p, q, hh);
+    b = hue2rgb(p, q, hh - 1 / 3);
+  }
+  const toHex = (v: number) => Math.round(v * 255).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+/**
+ * N distinct shades of one team's accent hue. Lightness is spread widely
+ * (not a tight tint-toward-white ramp) and alternates a small hue nudge so
+ * adjacent pie slices stay visually distinguishable even at low slice counts.
+ */
 function shadeSteps(hex: string, count: number): string[] {
   if (count <= 1) return [hex];
-  return Array.from({ length: count }, (_, i) => mixWithWhite(hex, (i / (count - 1)) * 0.6));
+  const [h, s] = hexToHsl(hex);
+  const sat = Math.max(s, 55);
+  return Array.from({ length: count }, (_, i) => {
+    const l = 32 + (i / (count - 1)) * 45;
+    const hue = h + (i % 2 === 1 ? 12 : 0);
+    return hslToHex(hue, sat, l);
+  });
+}
+
+/** Lightened for legibility as text/dots directly on the dark report background. */
+function accentOnDark(hex: string): string {
+  return mixWithWhite(hex, 0.38);
 }
 
 /** The one headline number each team leads with in the executive summary. */
@@ -47,8 +104,10 @@ function headlineFor(team: TeamConfig, data: TeamData): { label: string; value: 
       const g = team.groups![0];
       return { label: g.label, value: g.sumKeys.reduce((s, k) => s + (data[k] ?? 0), 0) };
     }
-    case "archivingSupport":
-      return { label: "Archived", value: data.archived ?? 0, unit: "TB" };
+    case "archivingSupport": {
+      const g = team.groups!.find((g) => g.key === "archived")!;
+      return { label: g.label, value: g.sumKeys.reduce((s, k) => s + (data[k] ?? 0), 0), unit: g.unit };
+    }
     case "mediaIngest":
       return { label: "Total Assets Processed (In GCP)", value: data.totalAssetsProcessed ?? 0 };
     default:
@@ -89,7 +148,7 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
       <SectionHeading title="Executive Summary" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {TEAMS.map((team) => {
-          const accent = ACCENT_HEX[team.accent];
+          const accent = accentOnDark(ACCENT_HEX[team.accent]);
           const headline = headlineFor(team, report.teams[team.key] ?? {});
           return (
             <div key={team.key} className="rounded-lg p-4" style={{ background: "rgba(0,0,0,0.15)" }}>
@@ -256,7 +315,9 @@ export default function ReportView({
                         const total = group.sumKeys.reduce((s, k) => s + (teamData[k] ?? 0), 0);
                         const detail = group.detailFieldKeys.map((k) => ({ label: fieldLabel(k), value: teamData[k] ?? 0 }));
                         const alt = rowIndex++ % 2 === 1;
-                        return <GroupRow key={group.key} label={group.label} total={total} detail={detail} altRow={alt} />;
+                        return (
+                          <GroupRow key={group.key} label={group.label} total={total} detail={detail} altRow={alt} unit={group.unit} />
+                        );
                       })}
                       {sourceBreakdowns.map((sb) => {
                         const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatNumber } from "@/lib/format";
+import { formatFieldValue } from "@/lib/format";
 
 const TEXT_BRIGHT = "#ffffff";
 const TEXT_DETAIL = "#cfeef2";
@@ -15,11 +15,13 @@ export default function GroupRow({
   total,
   detail,
   altRow,
+  unit,
 }: {
   label: string;
   total: number;
   detail: DetailItem[];
   altRow: boolean;
+  unit?: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -41,7 +43,7 @@ export default function GroupRow({
           </span>
         </td>
         <td className="px-3 py-2 text-sm font-bold" style={{ color: TEXT_BRIGHT }}>
-          {formatNumber(total)}
+          {formatFieldValue(total, unit)}
         </td>
       </tr>
       {open &&
@@ -51,7 +53,7 @@ export default function GroupRow({
               {d.label}
             </td>
             <td className="px-3 py-1.5 text-sm" style={{ color: TEXT_DETAIL }}>
-              {formatNumber(d.value)}
+              {formatFieldValue(d.value, unit)}
             </td>
           </tr>
         ))}
