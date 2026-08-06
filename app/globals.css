@@ -51,4 +51,20 @@ body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+  /* Page margins are unpainted by design in every browser, so a dark
+     background can never fill them — drop them to 0 and let the report's
+     own padding stand in as the visual margin instead. */
+  @page {
+    size: auto;
+    margin: 0;
+  }
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    /* Matches the report gradient's darkest tone, so the tail end of the
+       last page (past where the report content ends) doesn't show up as a
+       stray white/cream rectangle. */
+    background: #12283d !important;
+  }
 }

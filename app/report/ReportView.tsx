@@ -144,7 +144,10 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
   const notes = TEAMS.map((t) => ({ team: t, note: report.notes?.[t.key] })).filter((n) => n.note);
 
   return (
-    <section className="mb-6 rounded-2xl p-5" style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}>
+    <section
+      className="mb-6 rounded-2xl p-5 print:mb-4 print:break-inside-avoid print:rounded-lg print:p-4"
+      style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}
+    >
       <SectionHeading title="Executive Summary" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {TEAMS.map((team) => {
@@ -214,8 +217,8 @@ function TeamPie({
     .join(", ");
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-xl print:shadow-none">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+    <div className="rounded-xl bg-white p-5 shadow-xl print:break-inside-avoid print:rounded-lg print:p-3 print:shadow-none">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3 print:mb-2">
         <p className="text-sm font-bold" style={{ color: accent }}>
           {team.name}
         </p>
@@ -228,7 +231,7 @@ function TeamPie({
       {pieFields.length > 0 && (
         <div className="flex items-center gap-4">
           <div
-            className="h-28 w-28 shrink-0 rounded-full"
+            className="h-28 w-28 shrink-0 rounded-full print:h-20 print:w-20"
             style={{ background: sum > 0 ? `conic-gradient(${stops})` : "#eef0f4" }}
           />
           <div className="flex flex-col gap-1 text-xs" style={{ color: "#33454f" }}>
@@ -260,9 +263,9 @@ export default function ReportView({
   banner?: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen" style={{ background: GRADIENT }}>
+    <main className="min-h-screen print:min-h-0" style={{ background: GRADIENT }}>
       {banner}
-      <div className="flex flex-wrap items-start justify-between gap-4 px-6 pb-4 pt-10 sm:px-10">
+      <div className="flex flex-wrap items-start justify-between gap-4 px-6 pb-4 pt-10 sm:px-10 print:px-8 print:pb-3 print:pt-8">
         <div>
           <h1 className="text-2xl font-extrabold sm:text-3xl" style={{ color: TEXT_BRIGHT }}>
             Operations Report
@@ -281,10 +284,10 @@ export default function ReportView({
         <ExportButton />
       </div>
 
-      <div className="mx-auto max-w-4xl px-4 pb-12 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-4xl px-4 pb-12 sm:px-6 lg:px-10 print:max-w-none print:px-8 print:pb-6">
         <ExecutiveSummary report={report} />
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 print:gap-4">
           {TEAMS.map((team, idx) => {
             const teamData = report.teams[team.key] ?? {};
             const groups = team.groups ?? [];
@@ -300,7 +303,11 @@ export default function ReportView({
             let rowIndex = 0;
 
             return (
-              <section key={team.key} className="rounded-2xl p-5" style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}>
+              <section
+                key={team.key}
+                className="rounded-2xl p-5 print:rounded-lg print:p-4"
+                style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}
+              >
                 <SectionHeading n={idx + 1} title={team.name} />
                 <div className="overflow-x-auto rounded-lg" style={{ border: `1px solid ${PANEL_BORDER}` }}>
                   <table className="w-full border-collapse">
