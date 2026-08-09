@@ -29,14 +29,31 @@ function stripSslMode(connectionString: string | undefined): string | undefined 
   }
 }
 
+/**
+ * Whether to require TLS for this connection. POSTGRES_SSL, if set,
+ * always wins. Otherwise infer it from the host: a local/on-prem Postgres
+ * (localhost, a NAS on the LAN) has no TLS listener, while every hosted
+ * provider (Neon, RDS, etc.) requires it — so default to on for any
+ * non-local host instead of relying on a flag that's easy to forget to set.
+ */
+function resolveSsl(connectionString: string | undefined): boolean {
+  if (process.env.POSTGRES_SSL === "true") return true;
+  if (process.env.POSTGRES_SSL === "false") return false;
+  if (!connectionString) return false;
+  try {
+    const host = new URL(connectionString).hostname;
+    return host !== "localhost" && host !== "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
 function getPool(): Pool {
   if (!global.__pgPool) {
+    const raw = process.env.POSTGRES_URL;
     global.__pgPool = new Pool({
-      connectionString: stripSslMode(process.env.POSTGRES_URL),
-      ssl:
-        process.env.POSTGRES_SSL === "true"
-          ? { rejectUnauthorized: false }
-          : undefined,
+      connectionString: stripSslMode(raw),
+      ssl: resolveSsl(raw) ? { rejectUnauthorized: false } : undefined,
     });
   }
   return global.__pgPool;
