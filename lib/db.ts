@@ -11,10 +11,28 @@ declare global {
   var __schemaReady: Promise<void> | undefined;
 }
 
+/**
+ * pg-connection-string emits a SECURITY WARNING whenever the connection
+ * string has sslmode=require (common in Neon/managed Postgres URLs), since
+ * a future major version changes what that mode means. We control SSL
+ * explicitly via the `ssl` option below, so strip sslmode from the URL to
+ * avoid the warning and any ambiguity about which setting wins.
+ */
+function stripSslMode(connectionString: string | undefined): string | undefined {
+  if (!connectionString) return connectionString;
+  try {
+    const url = new URL(connectionString);
+    url.searchParams.delete("sslmode");
+    return url.toString();
+  } catch {
+    return connectionString;
+  }
+}
+
 function getPool(): Pool {
   if (!global.__pgPool) {
     global.__pgPool = new Pool({
-      connectionString: process.env.POSTGRES_URL,
+      connectionString: stripSslMode(process.env.POSTGRES_URL),
       ssl:
         process.env.POSTGRES_SSL === "true"
           ? { rejectUnauthorized: false }
