@@ -232,18 +232,27 @@ function TeamPie({
         <div className="flex items-center gap-4">
           <div
             className="h-28 w-28 shrink-0 rounded-full print:h-20 print:w-20"
-            style={{ background: sum > 0 ? `conic-gradient(${stops})` : "#eef0f4" }}
+            style={{
+              background: sum > 0 ? `conic-gradient(${stops})` : "#e4e7ec",
+              border: sum > 0 ? undefined : "1px dashed #c3c9d1",
+            }}
           />
-          <div className="flex flex-col gap-1 text-xs" style={{ color: "#33454f" }}>
-            {pieFields.map((f, i) => (
-              <div key={f.label} className="flex items-center gap-1.5">
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors[i] }} />
-                <span>
-                  {f.label}: <strong>{formatNumber(f.value)}</strong>
-                </span>
-              </div>
-            ))}
-          </div>
+          {sum > 0 ? (
+            <div className="flex flex-col gap-1 text-xs" style={{ color: "#33454f" }}>
+              {pieFields.map((f, i) => (
+                <div key={f.label} className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors[i] }} />
+                  <span>
+                    {f.label}: <strong>{formatNumber(f.value)}</strong>
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm italic" style={{ color: "#8b93a1" }}>
+              No data entered yet for this team.
+            </p>
+          )}
         </div>
       )}
     </div>
