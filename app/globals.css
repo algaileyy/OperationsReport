@@ -62,9 +62,9 @@ body {
   body {
     margin: 0 !important;
     padding: 0 !important;
-    /* Matches the report gradient's darkest tone, so the tail end of the
-       last page (past where the report content ends) doesn't show up as a
-       stray white/cream rectangle. */
-    background: #12283d !important;
+    /* Same gradient as the report itself (not just its darkest tone), so
+       the tail end of the last page — past where the report content ends —
+       blends in instead of showing a hard seam against a flat color. */
+    background: linear-gradient(135deg, #12283d 0%, #164a5c 30%, #1c7a86 65%, #2fc2c9 100%) !important;
   }
 }
