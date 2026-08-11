@@ -5,8 +5,6 @@ import type { MonthlyReport, SourceEntry } from "@/lib/report";
 import GroupRow from "./GroupRow";
 import ExportButton from "./ExportButton";
 
-const GRADIENT =
-  "linear-gradient(135deg, #12283d 0%, #164a5c 30%, #1c7a86 65%, #2fc2c9 100%)";
 const PANEL = "rgba(255,255,255,0.07)";
 const PANEL_BORDER = "rgba(255,255,255,0.14)";
 const HEADER_ROW = "rgba(6,32,40,0.55)";
@@ -275,7 +273,13 @@ export default function ReportView({
   banner?: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen print:min-h-0" style={{ background: GRADIENT }}>
+    <main className="relative z-0 min-h-screen print:min-h-0 report-flat-page">
+      {/* Decorative gradient layer, hidden for print (see globals.css for
+          why overriding main's own background conditionally doesn't work
+          reliably in the PDF export pipeline). print:hidden is a plain
+          display:none toggle, which — unlike a conditional background
+          override — is already proven reliable there. */}
+      <div className="absolute inset-0 report-gradient-page print:hidden" style={{ zIndex: -1 }} />
       {banner}
       <div className="flex flex-wrap items-start justify-between gap-4 px-6 pb-4 pt-10 sm:px-10 print:px-8 print:pb-3 print:pt-8">
         <div>

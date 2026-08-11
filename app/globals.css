@@ -46,6 +46,27 @@ body {
   font-variant-numeric: proportional-nums;
 }
 
+/* The report's background is a flat color, ALWAYS — not conditional on
+   print. Every attempt to conditionally override a gradient specifically
+   for print (plain !important override, mutually-exclusive @media blocks)
+   still showed the gradient in the actual exported PDF, confirmed by
+   inspecting the PDF's own content stream for a shading pattern — even
+   though both getComputedStyle and the live CSSOM reported the flat
+   override as active. Chromium's print-to-PDF pipeline (used for Export
+   PDF) evidently doesn't resolve that specific kind of conditional
+   background override the way on-screen rendering does. So the actual
+   report background (this class, on <main>) is unconditionally flat; the
+   gradient is purely a decorative overlay <div> in ReportView.tsx that's
+   hidden for print via print:hidden — a plain conditional display:none,
+   which (unlike a conditional background) has been reliable there. */
+.report-flat-page {
+  background: #1c7a86;
+}
+
+.report-gradient-page {
+  background: linear-gradient(135deg, #12283d 0%, #164a5c 30%, #1c7a86 65%, #2fc2c9 100%);
+}
+
 @media print {
   * {
     -webkit-print-color-adjust: exact !important;
@@ -62,9 +83,9 @@ body {
   body {
     margin: 0 !important;
     padding: 0 !important;
-    /* Same gradient as the report itself (not just its darkest tone), so
-       the tail end of the last page — past where the report content ends —
-       blends in instead of showing a hard seam against a flat color. */
-    background: linear-gradient(135deg, #12283d 0%, #164a5c 30%, #1c7a86 65%, #2fc2c9 100%) !important;
+    /* Same flat tone as .report-flat-page, so the leftover space on the
+       last printed page (past where the report content ends) matches
+       exactly regardless of where the page break falls. */
+    background: #1c7a86 !important;
   }
 }
