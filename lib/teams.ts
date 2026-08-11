@@ -13,8 +13,8 @@ export type FieldConfig = {
 /**
  * A collapsible report row: a highlighted total (sum of sumKeys) that
  * expands to show the individual fields in detailFieldKeys. detailFieldKeys
- * may be a superset of sumKeys (e.g. Publishing shows Shows in CMS in the
- * breakdown even though it isn't part of the Total Assets in CMS sum).
+ * may be a superset of sumKeys when a total should expand to show a field
+ * that isn't part of the sum itself.
  */
 export type FieldGroup = {
   key: string;
@@ -26,15 +26,18 @@ export type FieldGroup = {
 };
 
 /**
- * A metric tracked per-source instead of as one flat number (e.g. Archived
- * Projects: Atheer 7, AJ360 25). Sources are entered freely on /input, not
- * a fixed list, so a team can track whichever projects are active that
- * month. Rendered as a collapsible total row (same as FieldGroup) and as
- * one more pie slice.
+ * A metric tracked per-source instead of as one flat number (e.g. Archived:
+ * Atheer 7TB, Doha Debates 3TB). Sources are entered freely on /input, not
+ * a fixed list, so a team can add or remove clients/channels as its roster
+ * changes. Rendered as a collapsible total row (same as FieldGroup); folded
+ * into the pie as one more slice when unitless, or shown as a callout
+ * alongside the other unit-bearing fields when it has a unit.
  */
 export type SourceBreakdownConfig = {
   key: string;
   label: string;
+  /** e.g. "TB" — when set, the total and its entries are formatted with this unit. */
+  unit?: string;
 };
 
 export type TeamConfig = {
@@ -48,27 +51,8 @@ export type TeamConfig = {
 
 export const TEAMS: TeamConfig[] = [
   {
-    key: "publishing",
-    name: "Publishing Team",
-    accent: "blue",
-    fields: [
-      { key: "showsInCms", label: "Shows in CMS" },
-      { key: "episodesInCms", label: "Episodes in CMS" },
-      { key: "moviesInCms", label: "Movies in CMS" },
-      // "Total Assets in CMS" is derived (episodes + movies), not entered.
-    ],
-    groups: [
-      {
-        key: "totalAssetsInCms",
-        label: "Total Assets in CMS (movies and episodes)",
-        sumKeys: ["episodesInCms", "moviesInCms"],
-        detailFieldKeys: ["episodesInCms", "moviesInCms", "showsInCms"],
-      },
-    ],
-  },
-  {
     key: "mediaManagement",
-    name: "Media Management",
+    name: "Media Desk",
     accent: "orange",
     fields: [
       { key: "originalAssetsUploadedFrameIo", label: "Original Assets uploaded to Frame.io" },
@@ -105,10 +89,8 @@ export const TEAMS: TeamConfig[] = [
     fields: [
       { key: "projectFilesChecked", label: "Project files checked" },
       { key: "textlessCleansCompleted", label: "Textless/cleans completed" },
-      { key: "archivedAtheer", label: "Atheer", unit: "TB" },
-      { key: "archivedDohaDebates", label: "Doha Debates", unit: "TB" },
-      { key: "archivedSadeem", label: "Sadeem", unit: "TB" },
       { key: "revisioning", label: "Re-versioning" },
+      { key: "storageFreed", label: "Storage Freed", unit: "TB" },
     ],
     groups: [
       {
@@ -117,41 +99,21 @@ export const TEAMS: TeamConfig[] = [
         sumKeys: ["projectFilesChecked", "textlessCleansCompleted"],
         detailFieldKeys: ["projectFilesChecked", "textlessCleansCompleted"],
       },
-      {
-        key: "archived",
-        label: "Archived",
-        sumKeys: ["archivedAtheer", "archivedDohaDebates", "archivedSadeem"],
-        detailFieldKeys: ["archivedAtheer", "archivedDohaDebates", "archivedSadeem"],
-        unit: "TB",
-      },
     ],
+    sourceBreakdowns: [{ key: "archived", label: "Archived", unit: "TB" }],
   },
   {
     key: "mediaIngest",
     name: "Media Ingest Team",
     accent: "violet",
     fields: [
-      { key: "archivedMovies", label: "Archived Movies" },
-      { key: "archivedEpisodes", label: "Archived Episodes" },
-      { key: "catchUpMovies", label: "Catch up Movies" },
-      { key: "catchUpEpisodes", label: "Catch up Episodes" },
       { key: "qualityControlCompleted", label: "Quality Control Completed" },
       { key: "totalAssetsCurrentlyProcessing", label: "Total Assets Currently Processing" },
       { key: "totalAssetsProcessed", label: "Total Assets Processed (In GCP)" },
     ],
-    groups: [
-      {
-        key: "totalMoviesEpisodesArchived",
-        label: "Total Movies and Episodes Archived",
-        sumKeys: ["archivedMovies", "archivedEpisodes"],
-        detailFieldKeys: ["archivedMovies", "archivedEpisodes"],
-      },
-      {
-        key: "totalCatchUpMoviesEpisodes",
-        label: "Total Catch up Movies and Episodes",
-        sumKeys: ["catchUpMovies", "catchUpEpisodes"],
-        detailFieldKeys: ["catchUpMovies", "catchUpEpisodes"],
-      },
+    sourceBreakdowns: [
+      { key: "ingestedArchiveContent", label: "Ingested Archive Content" },
+      { key: "ingestedCatchUpContent", label: "Ingested Catch-up Content" },
     ],
   },
 ];
@@ -161,8 +123,3 @@ export function getTeam(key: string): TeamConfig | undefined {
 }
 
 export type TeamData = Record<string, number>;
-
-/** Publishing's CMS total is always derived, never typed in. */
-export function publishingTotal(data: TeamData): number {
-  return (data.episodesInCms ?? 0) + (data.moviesInCms ?? 0);
-}

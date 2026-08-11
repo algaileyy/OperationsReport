@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import { monthLabel } from "@/lib/months";
-import { TEAMS, publishingTotal } from "@/lib/teams";
+import { TEAMS } from "@/lib/teams";
 import type { MonthlyReport, SourceEntry } from "@/lib/report";
 
 const ACCENT_HEX: Record<string, string> = {
@@ -124,7 +124,7 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold" style={{ color: "var(--ink-primary)" }}>
-            Operations Report — Data Entry
+            Media Operations Report — Data Entry
           </h1>
           <p className="text-sm" style={{ color: "var(--ink-secondary)" }}>
             Enter each team&apos;s numbers, then control which month is live on the public report.
@@ -201,19 +201,6 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
                       />
                     </label>
                   ))}
-                  {team.key === "publishing" && (
-                    <div className="flex flex-col gap-1 sm:col-span-2">
-                      <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                        Total Assets in CMS (auto-calculated: episodes + movies)
-                      </span>
-                      <div
-                        className="rounded-md border px-3 py-2 text-sm font-semibold"
-                        style={{ borderColor: "var(--border)", background: "var(--surface-page)", color: "var(--ink-primary)" }}
-                      >
-                        {publishingTotal(teamData).toLocaleString("en-US")}
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {(team.sourceBreakdowns ?? []).map((sb) => {
@@ -221,7 +208,7 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
                   return (
                     <div key={sb.key} className="mt-4">
                       <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                        {sb.label} (by source)
+                        {sb.label} (by source{sb.unit ? `, ${sb.unit}` : ""})
                       </span>
                       <div className="mt-1 flex flex-col gap-2">
                         {entries.map((entry) => (

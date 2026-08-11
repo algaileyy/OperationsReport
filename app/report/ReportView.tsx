@@ -97,16 +97,16 @@ function accentOnDark(hex: string): string {
 }
 
 /** The one headline number each team leads with in the executive summary. */
-function headlineFor(team: TeamConfig, data: TeamData): { label: string; value: number; unit?: string } {
+function headlineFor(team: TeamConfig, report: MonthlyReport): { label: string; value: number; unit?: string } {
+  const data = report.teams[team.key] ?? {};
   switch (team.key) {
-    case "publishing":
     case "mediaManagement": {
       const g = team.groups![0];
       return { label: g.label, value: g.sumKeys.reduce((s, k) => s + (data[k] ?? 0), 0) };
     }
     case "archivingSupport": {
-      const g = team.groups!.find((g) => g.key === "archived")!;
-      return { label: g.label, value: g.sumKeys.reduce((s, k) => s + (data[k] ?? 0), 0), unit: g.unit };
+      const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.["archived"] ?? [];
+      return { label: "Archived", value: entries.reduce((s, e) => s + e.count, 0), unit: "TB" };
     }
     case "mediaIngest":
       return { label: "Total Assets Processed (In GCP)", value: data.totalAssetsProcessed ?? 0 };
@@ -149,10 +149,10 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
       style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}
     >
       <SectionHeading title="Executive Summary" />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {TEAMS.map((team) => {
           const accent = accentOnDark(ACCENT_HEX[team.accent]);
-          const headline = headlineFor(team, report.teams[team.key] ?? {});
+          const headline = headlineFor(team, report);
           return (
             <div key={team.key} className="rounded-lg p-4" style={{ background: "rgba(0,0,0,0.15)" }}>
               <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold" style={{ color: accent }}>
@@ -189,18 +189,21 @@ function TeamPie({
 }: {
   team: TeamConfig;
   data: TeamData;
-  /** Each source-breakdown's total, added as one more slice alongside the plain fields. */
-  sourceTotals?: { label: string; value: number }[];
+  /** Each source-breakdown's total, folded in alongside the plain fields. */
+  sourceTotals?: { label: string; value: number; unit?: string }[];
 }) {
   const accent = ACCENT_HEX[team.accent];
-  // Only unitless fields are comparable counts and can share one pie; a
-  // field with a unit (e.g. TB) isn't the same kind of quantity, so it's
+  // Only unitless values are comparable counts and can share one pie; a
+  // value with a unit (e.g. TB) isn't the same kind of quantity, so it's
   // shown as its own callout instead of a slice.
   const pieFields = [
     ...team.fields.filter((f) => !f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0 })),
-    ...sourceTotals,
+    ...sourceTotals.filter((s) => !s.unit),
   ];
-  const calloutFields = team.fields.filter((f) => f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit }));
+  const calloutFields = [
+    ...team.fields.filter((f) => f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit })),
+    ...sourceTotals.filter((s) => s.unit),
+  ];
 
   const colors = shadeSteps(accent, pieFields.length);
   const sum = pieFields.reduce((s, f) => s + f.value, 0);
@@ -277,7 +280,7 @@ export default function ReportView({
       <div className="flex flex-wrap items-start justify-between gap-4 px-6 pb-4 pt-10 sm:px-10 print:px-8 print:pb-3 print:pt-8">
         <div>
           <h1 className="text-2xl font-extrabold sm:text-3xl" style={{ color: TEXT_BRIGHT }}>
-            Operations Report
+            Media Operations Report
           </h1>
           <p className="mt-1 text-sm" style={{ color: TEXT_DIM }}>
             {monthLabel(monthKey)}
@@ -307,7 +310,7 @@ export default function ReportView({
             const sourceBreakdowns = team.sourceBreakdowns ?? [];
             const sourceTotals = sourceBreakdowns.map((sb) => {
               const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
-              return { label: sb.label, value: entries.reduce((s, e) => s + e.count, 0) };
+              return { label: sb.label, value: entries.reduce((s, e) => s + e.count, 0), unit: sb.unit };
             });
             let rowIndex = 0;
 
@@ -340,7 +343,9 @@ export default function ReportView({
                         const total = entries.reduce((s, e) => s + e.count, 0);
                         const detail = entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
                         const alt = rowIndex++ % 2 === 1;
-                        return <GroupRow key={sb.key} label={sb.label} total={total} detail={detail} altRow={alt} />;
+                        return (
+                          <GroupRow key={sb.key} label={sb.label} total={total} detail={detail} altRow={alt} unit={sb.unit} />
+                        );
                       })}
                       {plainFields.map((field) => {
                         const alt = rowIndex++ % 2 === 1;
