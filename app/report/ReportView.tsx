@@ -106,8 +106,10 @@ function headlineFor(team: TeamConfig, report: MonthlyReport): { label: string; 
       const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.["archived"] ?? [];
       return { label: "Archived", value: entries.reduce((s, e) => s + e.count, 0), unit: "TB" };
     }
-    case "mediaIngest":
-      return { label: "Total Assets Processed (In GCP)", value: data.totalAssetsProcessed ?? 0 };
+    case "mediaIngest": {
+      const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.["totalAssetsProcessed"] ?? [];
+      return { label: "Total Assets Processed (In GCP)", value: entries.reduce((s, e) => s + e.count, 0) };
+    }
     default:
       return { label: team.name, value: 0 };
   }
@@ -147,6 +149,40 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
       style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}
     >
       <SectionHeading title="Executive Summary" />
+      {(report.highlights.mainAchievements || report.highlights.challenges || report.highlights.newInitiatives) && (
+        <div className="mb-4 grid gap-4 sm:grid-cols-3">
+          {report.highlights.mainAchievements && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: ACCENT_CYAN }}>
+                Main Achievements
+              </p>
+              <p className="whitespace-pre-line text-sm" style={{ color: TEXT_DIM }}>
+                {report.highlights.mainAchievements}
+              </p>
+            </div>
+          )}
+          {report.highlights.challenges && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: ACCENT_CYAN }}>
+                Challenges
+              </p>
+              <p className="whitespace-pre-line text-sm" style={{ color: TEXT_DIM }}>
+                {report.highlights.challenges}
+              </p>
+            </div>
+          )}
+          {report.highlights.newInitiatives && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: ACCENT_CYAN }}>
+                New Initiatives
+              </p>
+              <p className="whitespace-pre-line text-sm" style={{ color: TEXT_DIM }}>
+                {report.highlights.newInitiatives}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {TEAMS.map((team) => {
           const accent = accentOnDark(ACCENT_HEX[team.accent]);

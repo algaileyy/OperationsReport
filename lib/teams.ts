@@ -84,13 +84,12 @@ export const TEAMS: TeamConfig[] = [
   },
   {
     key: "archivingSupport",
-    name: "Archiving & Production Support Team",
+    name: "Digital Archive & Production Support Team",
     accent: "aqua",
     fields: [
       { key: "projectFilesChecked", label: "Project files checked" },
       { key: "textlessCleansCompleted", label: "Textless/cleans completed" },
       { key: "revisioning", label: "Re-versioning" },
-      { key: "storageFreed", label: "Storage Freed", unit: "TB" },
     ],
     groups: [
       {
@@ -100,20 +99,22 @@ export const TEAMS: TeamConfig[] = [
         detailFieldKeys: ["projectFilesChecked", "textlessCleansCompleted"],
       },
     ],
-    sourceBreakdowns: [{ key: "archived", label: "Archived", unit: "TB" }],
+    sourceBreakdowns: [
+      { key: "archived", label: "Archived", unit: "TB" },
+      { key: "storageFreed", label: "Storage Freed", unit: "TB" },
+    ],
   },
   {
     key: "mediaIngest",
     name: "Media Ingest Team",
     accent: "violet",
-    fields: [
-      { key: "qualityControlCompleted", label: "Quality Control Completed" },
+    fields: [{ key: "qualityControlCompleted", label: "Quality Control Completed" }],
+    sourceBreakdowns: [
+      { key: "ingestedCatchUpContent", label: "Ingested Catch-up Content" },
+      { key: "ingestedArchiveContent", label: "Ingested Archive Content" },
+      { key: "ingestedToCms", label: "Ingested to CMS" },
       { key: "totalAssetsCurrentlyProcessing", label: "Total Assets Currently Processing" },
       { key: "totalAssetsProcessed", label: "Total Assets Processed (In GCP)" },
-    ],
-    sourceBreakdowns: [
-      { key: "ingestedArchiveContent", label: "Ingested Archive Content" },
-      { key: "ingestedCatchUpContent", label: "Ingested Catch-up Content" },
     ],
   },
 ];

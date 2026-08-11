@@ -6,7 +6,7 @@ import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import { monthLabel } from "@/lib/months";
 import { TEAMS } from "@/lib/teams";
-import type { MonthlyReport, SourceEntry } from "@/lib/report";
+import type { MonthlyReport, ReportHighlights, SourceEntry } from "@/lib/report";
 
 const ACCENT_HEX: Record<string, string> = {
   blue: "#2a78d6",
@@ -64,6 +64,13 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
           [fieldKey]: value === "" ? 0 : Number(value),
         },
       },
+    }));
+  }
+
+  function setHighlight(field: keyof ReportHighlights, value: string) {
+    setData((d) => ({
+      ...d,
+      highlights: { ...d.highlights, [field]: value },
     }));
   }
 
@@ -168,6 +175,53 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
         </p>
       ) : (
         <div className="flex flex-col gap-6">
+          <section className="rounded-lg border p-5" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+            <h2 className="mb-4 text-base font-semibold" style={{ color: "var(--ink-primary)" }}>
+              Report Highlights
+            </h2>
+            <div className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1">
+                <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                  Main Achievements
+                </span>
+                <textarea
+                  value={data.highlights.mainAchievements}
+                  onChange={(e) => setHighlight("mainAchievements", e.target.value)}
+                  rows={3}
+                  placeholder="What went well this month…"
+                  className="rounded-md border px-3 py-2 text-sm"
+                  style={inputStyle}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                  Challenges
+                </span>
+                <textarea
+                  value={data.highlights.challenges}
+                  onChange={(e) => setHighlight("challenges", e.target.value)}
+                  rows={3}
+                  placeholder="What was difficult or blocked this month…"
+                  className="rounded-md border px-3 py-2 text-sm"
+                  style={inputStyle}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                  New Initiatives
+                </span>
+                <textarea
+                  value={data.highlights.newInitiatives}
+                  onChange={(e) => setHighlight("newInitiatives", e.target.value)}
+                  rows={3}
+                  placeholder="What's starting up or planned…"
+                  className="rounded-md border px-3 py-2 text-sm"
+                  style={inputStyle}
+                />
+              </label>
+            </div>
+          </section>
+
           {TEAMS.map((team) => {
             const teamData = data.teams[team.key] ?? {};
             const accent = ACCENT_HEX[team.accent];

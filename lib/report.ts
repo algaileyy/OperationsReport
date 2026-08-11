@@ -9,10 +9,18 @@ export type SourceEntry = {
 /** teamKey -> breakdownKey -> entries */
 export type SourceBreakdowns = Record<string, Record<string, SourceEntry[]>>;
 
+/** Report-wide narrative context, shown at the top of the report alongside the Executive Summary. */
+export type ReportHighlights = {
+  mainAchievements: string;
+  challenges: string;
+  newInitiatives: string;
+};
+
 export type MonthlyReport = {
   teams: Record<string, TeamData>;
   notes: Record<string, string>;
   sourceBreakdowns: SourceBreakdowns;
+  highlights: ReportHighlights;
 };
 
 export function emptyReport(): MonthlyReport {
@@ -27,7 +35,7 @@ export function emptyReport(): MonthlyReport {
       sourceBreakdowns[t.key][sb.key] = [];
     }
   }
-  return { teams, notes, sourceBreakdowns };
+  return { teams, notes, sourceBreakdowns, highlights: { mainAchievements: "", challenges: "", newInitiatives: "" } };
 }
 
 /** Coerce arbitrary JSON into a well-formed MonthlyReport, dropping anything malformed. */
@@ -36,10 +44,12 @@ export function normalizeReport(raw: unknown): MonthlyReport {
     teams?: Record<string, Record<string, unknown>>;
     notes?: Record<string, unknown>;
     sourceBreakdowns?: Record<string, Record<string, unknown>>;
+    highlights?: Record<string, unknown>;
   } | null;
   const teamsSrc = src?.teams ?? {};
   const notesSrc = src?.notes ?? {};
   const sbSrc = src?.sourceBreakdowns ?? {};
+  const highlightsSrc = src?.highlights ?? {};
 
   const teams: Record<string, TeamData> = {};
   const notes: Record<string, string> = {};
@@ -75,5 +85,11 @@ export function normalizeReport(raw: unknown): MonthlyReport {
     }
   }
 
-  return { teams, notes, sourceBreakdowns };
+  const highlights: ReportHighlights = {
+    mainAchievements: typeof highlightsSrc.mainAchievements === "string" ? highlightsSrc.mainAchievements : "",
+    challenges: typeof highlightsSrc.challenges === "string" ? highlightsSrc.challenges : "",
+    newInitiatives: typeof highlightsSrc.newInitiatives === "string" ? highlightsSrc.newInitiatives : "",
+  };
+
+  return { teams, notes, sourceBreakdowns, highlights };
 }
