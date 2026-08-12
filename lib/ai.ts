@@ -1,6 +1,6 @@
 import type { TeamConfig } from "./teams";
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-flash-latest";
 
 /** Gemini's structured-output schema is an OpenAPI subset: uppercase type enums, no additionalProperties. */
 function toGeminiSchema(node: unknown): unknown {
