@@ -8,6 +8,11 @@ export type FieldConfig = {
    * a unit are shown as standalone callouts rather than pie-chart slices,
    * since a unit means they aren't a comparable count with the rest. */
   unit?: string;
+  /** For fields that don't apply every month (e.g. Re-versioning): drop the
+   * row from the report entirely when its value is 0, instead of showing a
+   * zero. Always still editable on /input, so entering a value for a month
+   * it does apply brings it right back. */
+  hideWhenZero?: boolean;
 };
 
 /**
@@ -89,7 +94,7 @@ export const TEAMS: TeamConfig[] = [
     fields: [
       { key: "projectFilesChecked", label: "Project files checked" },
       { key: "textlessCleansCompleted", label: "Textless/cleans completed" },
-      { key: "revisioning", label: "Re-versioning" },
+      { key: "revisioning", label: "Re-versioning", hideWhenZero: true },
     ],
     groups: [
       {

@@ -230,12 +230,13 @@ function TeamPie({
   // Only unitless values are comparable counts and can share one pie; a
   // value with a unit (e.g. TB) isn't the same kind of quantity, so it's
   // shown as its own callout instead of a slice.
+  const visibleFields = team.fields.filter((f) => !(f.hideWhenZero && (data[f.key] ?? 0) === 0));
   const pieFields = [
-    ...team.fields.filter((f) => !f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0 })),
+    ...visibleFields.filter((f) => !f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0 })),
     ...sourceTotals.filter((s) => !s.unit),
   ];
   const calloutFields = [
-    ...team.fields.filter((f) => f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit })),
+    ...visibleFields.filter((f) => f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit })),
     ...sourceTotals.filter((s) => s.unit),
   ];
 
@@ -344,7 +345,9 @@ export default function ReportView({
             const teamData = report.teams[team.key] ?? {};
             const groups = team.groups ?? [];
             const groupedKeys = new Set(groups.flatMap((g) => g.detailFieldKeys));
-            const plainFields = team.fields.filter((f) => !groupedKeys.has(f.key));
+            const plainFields = team.fields.filter(
+              (f) => !groupedKeys.has(f.key) && !(f.hideWhenZero && (teamData[f.key] ?? 0) === 0)
+            );
             const fieldLabel = (key: string) => team.fields.find((f) => f.key === key)?.label ?? key;
             const note = report.notes?.[team.key];
             const sourceBreakdowns = team.sourceBreakdowns ?? [];

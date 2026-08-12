@@ -43,6 +43,7 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
   const [live, setLive] = useState(publishedMonth);
   const [publishMonth, setPublishMonth] = useState(publishedMonth ?? defaultMonth);
   const [publishing, setPublishing] = useState(false);
+  const [activeTeam, setActiveTeam] = useState(TEAMS[0].key);
 
   async function loadMonth(m: string) {
     setMonth(m);
@@ -222,7 +223,29 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
             </div>
           </section>
 
-          {TEAMS.map((team) => {
+          <div className="flex flex-wrap gap-1 border-b" style={{ borderColor: "var(--border)" }}>
+            {TEAMS.map((team) => {
+              const accent = ACCENT_HEX[team.accent];
+              const active = team.key === activeTeam;
+              return (
+                <button
+                  key={team.key}
+                  onClick={() => setActiveTeam(team.key)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium"
+                  style={{
+                    color: active ? "var(--ink-primary)" : "var(--ink-secondary)",
+                    borderBottom: active ? `2px solid ${accent}` : "2px solid transparent",
+                    marginBottom: "-1px",
+                  }}
+                >
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: accent }} />
+                  {team.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {TEAMS.filter((team) => team.key === activeTeam).map((team) => {
             const teamData = data.teams[team.key] ?? {};
             const accent = ACCENT_HEX[team.accent];
             return (
