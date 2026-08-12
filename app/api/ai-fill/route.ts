@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTeam } from "@/lib/teams";
-import { callClaudeTool, buildTeamExtractionSchema } from "@/lib/ai";
+import { callAiTool, buildTeamExtractionSchema } from "@/lib/ai";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await callClaudeTool({
+    const result = await callAiTool({
       system:
         `You extract structured monthly operations numbers for the "${team.name}" team from a free-text ` +
         `recap written by the team. Only include a field or source-breakdown key if the text actually ` +

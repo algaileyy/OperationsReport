@@ -1,9 +1,27 @@
 import type { TeamConfig } from "./teams";
 
-const ANTHROPIC_MODEL = "claude-sonnet-5";
+const GEMINI_MODEL = "gemini-2.0-flash";
 
-/** Calls Claude with a single forced tool, and returns that tool's structured input. */
-export async function callClaudeTool<T>(opts: {
+/** Gemini's structured-output schema is an OpenAPI subset: uppercase type enums, no additionalProperties. */
+function toGeminiSchema(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(toGeminiSchema);
+  if (node && typeof node === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      if (k === "additionalProperties") continue;
+      if (k === "type" && typeof v === "string") {
+        out.type = v.toUpperCase();
+        continue;
+      }
+      out[k] = toGeminiSchema(v);
+    }
+    return out;
+  }
+  return node;
+}
+
+/** Calls Gemini with a forced JSON response shaped by `schema`, and returns the parsed result. */
+export async function callAiTool<T>(opts: {
   system: string;
   userText: string;
   toolName: string;
@@ -11,39 +29,39 @@ export async function callClaudeTool<T>(opts: {
   schema: Record<string, unknown>;
   maxTokens?: number;
 }): Promise<T> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not set.");
+    throw new Error("GEMINI_API_KEY is not set.");
   }
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
-      max_tokens: opts.maxTokens ?? 1024,
-      system: opts.system,
-      messages: [{ role: "user", content: opts.userText }],
-      tools: [{ name: opts.toolName, description: opts.toolDescription, input_schema: opts.schema }],
-      tool_choice: { type: "tool", name: opts.toolName },
-    }),
-  });
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: `${opts.system} ${opts.toolDescription}` }] },
+        contents: [{ role: "user", parts: [{ text: opts.userText }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: toGeminiSchema(opts.schema),
+          maxOutputTokens: opts.maxTokens ?? 1024,
+        },
+      }),
+    }
+  );
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
-    throw new Error(`Claude API error ${res.status}: ${errText.slice(0, 300)}`);
+    throw new Error(`Gemini API error ${res.status}: ${errText.slice(0, 300)}`);
   }
 
   const body = await res.json();
-  const toolUse = (body.content ?? []).find((block: { type: string }) => block.type === "tool_use");
-  if (!toolUse) {
-    throw new Error("Claude did not return a structured result.");
+  const text = body?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error("Gemini did not return a structured result.");
   }
-  return toolUse.input as T;
+  return JSON.parse(text) as T;
 }
 
 /**
@@ -83,8 +101,8 @@ export function buildTeamExtractionSchema(team: TeamConfig) {
   return {
     type: "object",
     properties: {
-      fields: { type: "object", properties: fieldProps, additionalProperties: false },
-      sourceBreakdowns: { type: "object", properties: sbProps, additionalProperties: false },
+      fields: { type: "object", properties: fieldProps },
+      sourceBreakdowns: { type: "object", properties: sbProps },
       notes: {
         type: "string",
         description: "Anything else worth calling out that doesn't fit a specific number. Omit if nothing extra.",

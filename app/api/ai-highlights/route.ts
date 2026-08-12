@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TEAMS } from "@/lib/teams";
 import { normalizeReport } from "@/lib/report";
-import { callClaudeTool, HIGHLIGHTS_SCHEMA } from "@/lib/ai";
+import { callAiTool, HIGHLIGHTS_SCHEMA } from "@/lib/ai";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await callClaudeTool({
+    const result = await callAiTool({
       system:
         "You write a concise, management-facing monthly report summary for a media operations report, " +
         "synthesizing across all teams' numbers and notes provided by the user.",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MonthPicker from "./MonthPicker";
@@ -23,6 +23,28 @@ const inputStyle = {
 
 function newId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-lg rounded-lg border p-5 shadow-xl"
+        style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-base font-semibold" style={{ color: "var(--ink-primary)" }}>
+            {title}
+          </h3>
+          <button onClick={onClose} aria-label="Close" className="text-lg leading-none" style={{ color: "var(--ink-muted)" }}>
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 type Props = {
@@ -49,8 +71,10 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
   const [aiSummary, setAiSummary] = useState<Record<string, string>>({});
   const [aiError, setAiError] = useState<Record<string, string | null>>({});
+  const [aiModalTeam, setAiModalTeam] = useState<string | null>(null);
   const [highlightsLoading, setHighlightsLoading] = useState(false);
   const [highlightsError, setHighlightsError] = useState<string | null>(null);
+  const [highlightsModalOpen, setHighlightsModalOpen] = useState(false);
 
   async function loadMonth(m: string) {
     setMonth(m);
@@ -250,19 +274,13 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
               </h2>
               <button
                 type="button"
-                onClick={onAiDraftHighlights}
-                disabled={highlightsLoading}
-                className="rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                onClick={() => setHighlightsModalOpen(true)}
+                className="rounded-md border px-3 py-1.5 text-sm font-medium"
                 style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
               >
-                {highlightsLoading ? "Drafting…" : "✨ Draft with AI"}
+                ✨ Draft with AI
               </button>
             </div>
-            {highlightsError && (
-              <p className="mb-3 text-sm" style={{ color: "#d03b3b" }}>
-                {highlightsError}
-              </p>
-            )}
             <div className="flex flex-col gap-4">
               <label className="flex flex-col gap-1">
                 <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
@@ -337,48 +355,21 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
                 className="rounded-lg border p-5"
                 style={{ borderColor: "var(--border)", background: "var(--surface)" }}
               >
-                <div className="mb-4 flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: accent }} />
-                  <h2 className="text-base font-semibold" style={{ color: "var(--ink-primary)" }}>
-                    {team.name}
-                  </h2>
-                </div>
-
-                <div className="mb-5 rounded-md border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-page)" }}>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-sm font-medium" style={{ color: "var(--ink-primary)" }}>
-                      ✨ Describe this month, and AI will fill in the numbers below
-                    </span>
-                    <textarea
-                      value={aiText[team.key] ?? ""}
-                      onChange={(e) => setAiText((s) => ({ ...s, [team.key]: e.target.value }))}
-                      rows={3}
-                      placeholder="e.g. We uploaded 62 assets to Frame.io, had 15 catch-up originals, and archived projects for Atheer (42TB) and Doha Debates (18TB)…"
-                      className="rounded-md border px-3 py-2 text-sm"
-                      style={inputStyle}
-                    />
-                  </label>
-                  <div className="mt-2 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => onAiFill(team.key)}
-                      disabled={aiLoading[team.key] || !(aiText[team.key] ?? "").trim()}
-                      className="rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-                      style={{ background: accent }}
-                    >
-                      {aiLoading[team.key] ? "Filling…" : "Fill with AI"}
-                    </button>
-                    {aiError[team.key] && (
-                      <span className="text-sm" style={{ color: "#d03b3b" }}>
-                        {aiError[team.key]}
-                      </span>
-                    )}
+                <div className="mb-4 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: accent }} />
+                    <h2 className="text-base font-semibold" style={{ color: "var(--ink-primary)" }}>
+                      {team.name}
+                    </h2>
                   </div>
-                  {aiSummary[team.key] && (
-                    <p className="mt-2 text-sm italic" style={{ color: "var(--ink-secondary)" }}>
-                      AI understood: {aiSummary[team.key]}
-                    </p>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setAiModalTeam(team.key)}
+                    className="rounded-md border px-3 py-1.5 text-sm font-medium"
+                    style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
+                  >
+                    ✨ AI Fill
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -478,9 +469,80 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
                     style={inputStyle}
                   />
                 </label>
+
+                {aiModalTeam === team.key && (
+                  <Modal title={`AI Fill — ${team.name}`} onClose={() => setAiModalTeam(null)}>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                        Describe this month in plain English, and AI will fill in the numbers below.
+                      </span>
+                      <textarea
+                        value={aiText[team.key] ?? ""}
+                        onChange={(e) => setAiText((s) => ({ ...s, [team.key]: e.target.value }))}
+                        rows={4}
+                        placeholder="e.g. We uploaded 62 assets to Frame.io, had 15 catch-up originals, and archived projects for Atheer (42TB) and Doha Debates (18TB)…"
+                        className="rounded-md border px-3 py-2 text-sm"
+                        style={inputStyle}
+                      />
+                    </label>
+                    <div className="mt-3 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => onAiFill(team.key)}
+                        disabled={aiLoading[team.key] || !(aiText[team.key] ?? "").trim()}
+                        className="rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                        style={{ background: accent }}
+                      >
+                        {aiLoading[team.key] ? "Filling…" : "Fill with AI"}
+                      </button>
+                      {aiError[team.key] && (
+                        <span className="text-sm" style={{ color: "#d03b3b" }}>
+                          {aiError[team.key]}
+                        </span>
+                      )}
+                    </div>
+                    {aiSummary[team.key] && (
+                      <>
+                        <p className="mt-3 text-sm italic" style={{ color: "var(--ink-secondary)" }}>
+                          AI understood: {aiSummary[team.key]}
+                        </p>
+                        <p className="mt-2 text-sm" style={{ color: "var(--ink-muted)" }}>
+                          Fields below have been updated — close this, review, then hit Save.
+                        </p>
+                      </>
+                    )}
+                  </Modal>
+                )}
               </section>
             );
           })}
+
+          {highlightsModalOpen && (
+            <Modal title="Draft Highlights with AI" onClose={() => setHighlightsModalOpen(false)}>
+              <p className="mb-3 text-sm" style={{ color: "var(--ink-secondary)" }}>
+                Uses this month&apos;s saved numbers and notes across all teams to draft Main Achievements,
+                Challenges, and New Initiatives.
+              </p>
+              {highlightsError && (
+                <p className="mb-3 text-sm" style={{ color: "#d03b3b" }}>
+                  {highlightsError}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={onAiDraftHighlights}
+                disabled={highlightsLoading}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                style={{ background: "#2a78d6" }}
+              >
+                {highlightsLoading ? "Drafting…" : "Generate draft"}
+              </button>
+              <p className="mt-3 text-sm" style={{ color: "var(--ink-muted)" }}>
+                The draft will fill the three fields above — close this, then review and edit them there before
+                saving.
+              </p>
+            </Modal>
+          )}
 
           <div className="flex items-center gap-3">
             <button
