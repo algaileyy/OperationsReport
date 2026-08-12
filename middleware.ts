@@ -24,5 +24,7 @@ export const config = {
     "/api/save",
     "/api/publish",
     "/api/report-data",
+    "/api/ai-fill",
+    "/api/ai-highlights",
   ],
 };

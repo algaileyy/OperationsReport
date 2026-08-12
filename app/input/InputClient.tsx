@@ -45,6 +45,13 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
   const [publishing, setPublishing] = useState(false);
   const [activeTeam, setActiveTeam] = useState(TEAMS[0].key);
 
+  const [aiText, setAiText] = useState<Record<string, string>>({});
+  const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
+  const [aiSummary, setAiSummary] = useState<Record<string, string>>({});
+  const [aiError, setAiError] = useState<Record<string, string | null>>({});
+  const [highlightsLoading, setHighlightsLoading] = useState(false);
+  const [highlightsError, setHighlightsError] = useState<string | null>(null);
+
   async function loadMonth(m: string) {
     setMonth(m);
     setLoading(true);
@@ -90,6 +97,66 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
         [teamKey]: { ...d.sourceBreakdowns[teamKey], [breakdownKey]: entries },
       },
     }));
+  }
+
+  async function onAiFill(teamKey: string) {
+    const text = (aiText[teamKey] ?? "").trim();
+    if (!text) return;
+    setAiLoading((s) => ({ ...s, [teamKey]: true }));
+    setAiError((s) => ({ ...s, [teamKey]: null }));
+    try {
+      const res = await fetch("/api/ai-fill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamKey, text }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "AI extraction failed.");
+      const result = body.data as {
+        fields?: Record<string, number>;
+        sourceBreakdowns?: Record<string, { source: string; count: number }[]>;
+        notes?: string;
+        summary?: string;
+      };
+
+      setData((d) => {
+        const nextTeamData = { ...d.teams[teamKey], ...(result.fields ?? {}) };
+        const nextSbForTeam = { ...d.sourceBreakdowns[teamKey] };
+        for (const [key, entries] of Object.entries(result.sourceBreakdowns ?? {})) {
+          nextSbForTeam[key] = entries.map((e) => ({ id: newId("src"), source: e.source, count: e.count }));
+        }
+        return {
+          ...d,
+          teams: { ...d.teams, [teamKey]: nextTeamData },
+          sourceBreakdowns: { ...d.sourceBreakdowns, [teamKey]: nextSbForTeam },
+          notes: result.notes ? { ...d.notes, [teamKey]: result.notes } : d.notes,
+        };
+      });
+      setAiSummary((s) => ({ ...s, [teamKey]: result.summary ?? "" }));
+    } catch (err) {
+      setAiError((s) => ({ ...s, [teamKey]: err instanceof Error ? err.message : "Something went wrong." }));
+    } finally {
+      setAiLoading((s) => ({ ...s, [teamKey]: false }));
+    }
+  }
+
+  async function onAiDraftHighlights() {
+    setHighlightsLoading(true);
+    setHighlightsError(null);
+    try {
+      const res = await fetch("/api/ai-highlights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "AI draft failed.");
+      setData((d) => ({ ...d, highlights: body.data }));
+    } catch (err) {
+      setHighlightsError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setHighlightsLoading(false);
+    }
   }
 
   async function onSave() {
@@ -177,9 +244,25 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
       ) : (
         <div className="flex flex-col gap-6">
           <section className="rounded-lg border p-5" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
-            <h2 className="mb-4 text-base font-semibold" style={{ color: "var(--ink-primary)" }}>
-              Report Highlights
-            </h2>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold" style={{ color: "var(--ink-primary)" }}>
+                Report Highlights
+              </h2>
+              <button
+                type="button"
+                onClick={onAiDraftHighlights}
+                disabled={highlightsLoading}
+                className="rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
+              >
+                {highlightsLoading ? "Drafting…" : "✨ Draft with AI"}
+              </button>
+            </div>
+            {highlightsError && (
+              <p className="mb-3 text-sm" style={{ color: "#d03b3b" }}>
+                {highlightsError}
+              </p>
+            )}
             <div className="flex flex-col gap-4">
               <label className="flex flex-col gap-1">
                 <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
@@ -260,6 +343,44 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
                     {team.name}
                   </h2>
                 </div>
+
+                <div className="mb-5 rounded-md border p-3" style={{ borderColor: "var(--border)", background: "var(--surface-page)" }}>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-sm font-medium" style={{ color: "var(--ink-primary)" }}>
+                      ✨ Describe this month, and AI will fill in the numbers below
+                    </span>
+                    <textarea
+                      value={aiText[team.key] ?? ""}
+                      onChange={(e) => setAiText((s) => ({ ...s, [team.key]: e.target.value }))}
+                      rows={3}
+                      placeholder="e.g. We uploaded 62 assets to Frame.io, had 15 catch-up originals, and archived projects for Atheer (42TB) and Doha Debates (18TB)…"
+                      className="rounded-md border px-3 py-2 text-sm"
+                      style={inputStyle}
+                    />
+                  </label>
+                  <div className="mt-2 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onAiFill(team.key)}
+                      disabled={aiLoading[team.key] || !(aiText[team.key] ?? "").trim()}
+                      className="rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                      style={{ background: accent }}
+                    >
+                      {aiLoading[team.key] ? "Filling…" : "Fill with AI"}
+                    </button>
+                    {aiError[team.key] && (
+                      <span className="text-sm" style={{ color: "#d03b3b" }}>
+                        {aiError[team.key]}
+                      </span>
+                    )}
+                  </div>
+                  {aiSummary[team.key] && (
+                    <p className="mt-2 text-sm italic" style={{ color: "var(--ink-secondary)" }}>
+                      AI understood: {aiSummary[team.key]}
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {team.fields.map((field) => (
                     <label key={field.key} className="flex flex-col gap-1">
