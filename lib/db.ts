@@ -133,6 +133,32 @@ export async function setPublishedMonth(month: string): Promise<void> {
   );
 }
 
+export async function getReminderRecipients(): Promise<string[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ value: string }>(
+    `SELECT value FROM settings WHERE key = 'reminder_recipients';`
+  );
+  if (!rows[0]) return [];
+  try {
+    const parsed = JSON.parse(rows[0].value);
+    return Array.isArray(parsed) ? parsed.filter((e): e is string => typeof e === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function setReminderRecipients(emails: string[]): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    `
+    INSERT INTO settings (key, value)
+    VALUES ('reminder_recipients', $1)
+    ON CONFLICT (key) DO UPDATE SET value = $1;
+    `,
+    [JSON.stringify(emails)]
+  );
+}
+
 export async function getReportUpdatedAt(month: string): Promise<Date | null> {
   await ensureSchema();
   const { rows } = await getPool().query<{ updated_at: Date }>(

@@ -52,9 +52,16 @@ type Props = {
   monthsWithData: string[];
   defaultMonth: string;
   initialData: MonthlyReport;
+  initialRecipients: string[];
 };
 
-export default function InputClient({ publishedMonth, monthsWithData, defaultMonth, initialData }: Props) {
+export default function InputClient({
+  publishedMonth,
+  monthsWithData,
+  defaultMonth,
+  initialData,
+  initialRecipients,
+}: Props) {
   const router = useRouter();
   const [month, setMonth] = useState(defaultMonth);
   const [data, setData] = useState<MonthlyReport>(initialData);
@@ -75,6 +82,42 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
   const [highlightsLoading, setHighlightsLoading] = useState(false);
   const [highlightsError, setHighlightsError] = useState<string | null>(null);
   const [highlightsModalOpen, setHighlightsModalOpen] = useState(false);
+
+  const [recipients, setRecipients] = useState<{ id: string; email: string }[]>(
+    initialRecipients.map((email) => ({ id: newId("rcpt"), email }))
+  );
+  const [recipientsSaving, setRecipientsSaving] = useState(false);
+  const [recipientsMsg, setRecipientsMsg] = useState<string | null>(null);
+  const [sendingReminder, setSendingReminder] = useState(false);
+  const [reminderMsg, setReminderMsg] = useState<string | null>(null);
+
+  async function onSaveRecipients() {
+    const emails = recipients.map((r) => r.email.trim()).filter(Boolean);
+    setRecipientsSaving(true);
+    setRecipientsMsg(null);
+    const res = await fetch("/api/reminder-recipients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recipients: emails }),
+    });
+    setRecipientsSaving(false);
+    setRecipientsMsg(res.ok ? "Saved." : "Failed to save — check that every address looks valid.");
+  }
+
+  async function onSendReminderNow() {
+    setSendingReminder(true);
+    setReminderMsg(null);
+    try {
+      const res = await fetch("/api/send-reminder", { method: "POST" });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "Failed to send.");
+      setReminderMsg(`Sent to ${body.sent} recipient${body.sent === 1 ? "" : "s"}.`);
+    } catch (err) {
+      setReminderMsg(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSendingReminder(false);
+    }
+  }
 
   async function loadMonth(m: string) {
     setMonth(m);
@@ -251,6 +294,72 @@ export default function InputClient({ publishedMonth, monthsWithData, defaultMon
           >
             {publishing ? "Publishing…" : "Set as live report"}
           </button>
+        </div>
+      </section>
+
+      <section className="mb-8 rounded-lg border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
+        <h2 className="mb-2 text-sm font-semibold" style={{ color: "var(--ink-primary)" }}>
+          Team Reminders
+        </h2>
+        <p className="mb-3 text-sm" style={{ color: "var(--ink-secondary)" }}>
+          These emails get a reminder to submit their numbers automatically near the end of each month, or whenever
+          you send one manually below.
+        </p>
+        <div className="flex flex-col gap-2">
+          {recipients.map((r) => (
+            <div key={r.id} className="flex items-center gap-2">
+              <input
+                type="email"
+                placeholder="name@example.com"
+                value={r.email}
+                onChange={(e) =>
+                  setRecipients((list) => list.map((x) => (x.id === r.id ? { ...x, email: e.target.value } : x)))
+                }
+                className="flex-1 rounded-md border px-3 py-2 text-sm"
+                style={inputStyle}
+              />
+              <button
+                type="button"
+                onClick={() => setRecipients((list) => list.filter((x) => x.id !== r.id))}
+                aria-label="Remove recipient"
+                className="px-2 text-sm"
+                style={{ color: "#d03b3b" }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setRecipients((list) => [...list, { id: newId("rcpt"), email: "" }])}
+            className="self-start rounded-md border px-3 py-1.5 text-sm font-medium"
+            style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
+          >
+            + Add recipient
+          </button>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            onClick={onSaveRecipients}
+            disabled={recipientsSaving}
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            style={{ background: "#2a78d6" }}
+          >
+            {recipientsSaving ? "Saving…" : "Save recipients"}
+          </button>
+          <button
+            onClick={onSendReminderNow}
+            disabled={sendingReminder}
+            className="rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+            style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
+          >
+            {sendingReminder ? "Sending…" : "Send reminder now"}
+          </button>
+          {(recipientsMsg || reminderMsg) && (
+            <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+              {recipientsMsg} {reminderMsg}
+            </span>
+          )}
         </div>
       </section>
 

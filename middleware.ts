@@ -26,5 +26,7 @@ export const config = {
     "/api/report-data",
     "/api/ai-fill",
     "/api/ai-highlights",
+    "/api/reminder-recipients",
+    "/api/send-reminder",
   ],
 };

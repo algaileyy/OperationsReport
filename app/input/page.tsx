@@ -1,4 +1,4 @@
-import { getMonthlyReport, getPublishedMonth, listMonthsWithData } from "@/lib/db";
+import { getMonthlyReport, getPublishedMonth, getReminderRecipients, listMonthsWithData } from "@/lib/db";
 import { currentMonthKey } from "@/lib/months";
 import { emptyReport } from "@/lib/report";
 import InputNav from "./InputNav";
@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic";
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
 export default async function InputPage({ searchParams }: { searchParams: { month?: string } }) {
-  const [publishedMonth, monthsWithData] = await Promise.all([
+  const [publishedMonth, monthsWithData, reminderRecipients] = await Promise.all([
     getPublishedMonth(),
     listMonthsWithData(),
+    getReminderRecipients(),
   ]);
 
   const requestedMonth = searchParams.month && MONTH_RE.test(searchParams.month) ? searchParams.month : null;
@@ -26,6 +27,7 @@ export default async function InputPage({ searchParams }: { searchParams: { mont
         monthsWithData={monthsWithData}
         defaultMonth={defaultMonth}
         initialData={initialData}
+        initialRecipients={reminderRecipients}
       />
     </main>
   );
