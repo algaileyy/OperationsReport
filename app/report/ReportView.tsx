@@ -12,6 +12,8 @@ const ROW_ALT = "rgba(255,255,255,0.04)";
 const TEXT_BRIGHT = "#ffffff";
 const TEXT_DIM = "#bfe4ea";
 const ACCENT_CYAN = "#5fd4f4";
+const ACCENT_GREEN = "#34d399";
+const ACCENT_AMBER = "#fbbf24";
 
 const ACCENT_HEX: Record<string, string> = {
   blue: "#2a78d6",
@@ -140,8 +142,35 @@ function Td({ children }: { children: React.ReactNode }) {
   );
 }
 
+function HighlightBlock({ color, label, text }: { color: string; label: string; text: string }) {
+  return (
+    <div className="border-l-2 pl-3" style={{ borderColor: color }}>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color }}>
+        {label}
+      </p>
+      <p className="whitespace-pre-line text-sm" style={{ color: TEXT_DIM }}>
+        {text}
+      </p>
+    </div>
+  );
+}
+
+function DividerLabel({ text }: { text: string }) {
+  return (
+    <div className="mb-3 flex items-center gap-3 print:mb-2">
+      <span className="h-px flex-1" style={{ background: PANEL_BORDER }} />
+      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
+        {text}
+      </p>
+      <span className="h-px flex-1" style={{ background: PANEL_BORDER }} />
+    </div>
+  );
+}
+
 function ExecutiveSummary({ report }: { report: MonthlyReport }) {
   const notes = TEAMS.map((t) => ({ team: t, note: report.notes?.[t.key] })).filter((n) => n.note);
+  const hasHighlights =
+    report.highlights.mainAchievements || report.highlights.challenges || report.highlights.newInitiatives;
 
   return (
     <section
@@ -149,48 +178,34 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
       style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}
     >
       <SectionHeading title="Executive Summary" />
-      {(report.highlights.mainAchievements || report.highlights.challenges || report.highlights.newInitiatives) && (
-        <div className="mb-4 grid gap-4 sm:grid-cols-3">
+      {hasHighlights && (
+        <div
+          className="mb-5 grid gap-x-6 gap-y-4 rounded-xl p-4 sm:grid-cols-3 print:mb-4 print:p-3"
+          style={{ background: "rgba(0,0,0,0.12)" }}
+        >
           {report.highlights.mainAchievements && (
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: ACCENT_CYAN }}>
-                Main Achievements
-              </p>
-              <p className="whitespace-pre-line text-sm" style={{ color: TEXT_DIM }}>
-                {report.highlights.mainAchievements}
-              </p>
-            </div>
+            <HighlightBlock color={ACCENT_GREEN} label="Main Achievements" text={report.highlights.mainAchievements} />
           )}
           {report.highlights.challenges && (
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: ACCENT_CYAN }}>
-                Challenges
-              </p>
-              <p className="whitespace-pre-line text-sm" style={{ color: TEXT_DIM }}>
-                {report.highlights.challenges}
-              </p>
-            </div>
+            <HighlightBlock color={ACCENT_AMBER} label="Challenges" text={report.highlights.challenges} />
           )}
           {report.highlights.newInitiatives && (
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: ACCENT_CYAN }}>
-                New Initiatives
-              </p>
-              <p className="whitespace-pre-line text-sm" style={{ color: TEXT_DIM }}>
-                {report.highlights.newInitiatives}
-              </p>
-            </div>
+            <HighlightBlock color={ACCENT_CYAN} label="New Initiatives" text={report.highlights.newInitiatives} />
           )}
         </div>
       )}
+      <DividerLabel text="This Month at a Glance" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {TEAMS.map((team) => {
           const accent = accentOnDark(ACCENT_HEX[team.accent]);
           const headline = headlineFor(team, report);
           return (
-            <div key={team.key} className="rounded-lg p-4" style={{ background: "rgba(0,0,0,0.15)" }}>
-              <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold" style={{ color: accent }}>
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
+            <div
+              key={team.key}
+              className="rounded-lg border-t-2 p-4"
+              style={{ background: "rgba(0,0,0,0.15)", borderColor: accent }}
+            >
+              <p className="mb-1 text-xs font-semibold" style={{ color: accent }}>
                 {team.name}
               </p>
               <p className="stat-value text-2xl font-extrabold" style={{ color: TEXT_BRIGHT }}>
@@ -204,13 +219,18 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
         })}
       </div>
       {notes.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-1.5 text-sm" style={{ color: TEXT_DIM }}>
-          {notes.map(({ team, note }) => (
-            <li key={team.key}>
-              <strong style={{ color: TEXT_BRIGHT }}>{team.name}:</strong> {note}
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className="mt-5 print:mt-4">
+            <DividerLabel text="Notes" />
+          </div>
+          <ul className="flex flex-col gap-1.5 text-sm" style={{ color: TEXT_DIM }}>
+            {notes.map(({ team, note }) => (
+              <li key={team.key}>
+                <strong style={{ color: TEXT_BRIGHT }}>{team.name}:</strong> {note}
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );
