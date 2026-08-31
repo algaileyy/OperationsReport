@@ -43,6 +43,12 @@ export type SourceBreakdownConfig = {
   label: string;
   /** e.g. "TB" — when set, the total and its entries are formatted with this unit. */
   unit?: string;
+  /**
+   * When true, each source further breaks down into freely add/removable
+   * sub-categories (e.g. Artworks/Batching/Thumbnails) instead of a single
+   * count — for a metric that's tracked per source *and* per work type.
+   */
+  hasCategories?: boolean;
 };
 
 export type TeamConfig = {
@@ -117,8 +123,7 @@ export const TEAMS: TeamConfig[] = [
     sourceBreakdowns: [
       { key: "ingestedCatchUpContent", label: "Ingested Catch-up Content" },
       { key: "ingestedArchiveContent", label: "Ingested Archive Content" },
-      { key: "ingestedToCms", label: "Ingested to CMS" },
-      { key: "totalAssetsCurrentlyProcessing", label: "Total Assets Currently Processing" },
+      { key: "totalAssetsCurrentlyProcessing", label: "Total Assets Currently Processing", hasCategories: true },
       { key: "totalAssetsProcessed", label: "Total Assets Processed (In GCP)" },
     ],
   },

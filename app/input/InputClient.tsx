@@ -47,6 +47,146 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
+const DEFAULT_CATEGORIES = ["Artworks", "Batching", "Thumbnails"];
+
+/**
+ * Editor for a source breakdown where each source further splits into
+ * freely add/removable sub-categories (e.g. Artworks/Batching/Thumbnails)
+ * instead of a single count. Entries are still a flat SourceEntry[] under
+ * the hood — grouped here by matching `source` purely for editing.
+ */
+function CategorizedSourceEditor({
+  label,
+  unit,
+  entries,
+  onChange,
+}: {
+  label: string;
+  unit?: string;
+  entries: SourceEntry[];
+  onChange: (entries: SourceEntry[]) => void;
+}) {
+  const groups: { source: string; ids: string[] }[] = [];
+  const indexBySource = new Map<string, number>();
+  for (const e of entries) {
+    let idx = indexBySource.get(e.source);
+    if (idx === undefined) {
+      idx = groups.length;
+      indexBySource.set(e.source, idx);
+      groups.push({ source: e.source, ids: [] });
+    }
+    groups[idx].ids.push(e.id);
+  }
+
+  function renameSource(ids: string[], newSource: string) {
+    onChange(entries.map((e) => (ids.includes(e.id) ? { ...e, source: newSource } : e)));
+  }
+
+  function updateEntry(id: string, patch: Partial<SourceEntry>) {
+    onChange(entries.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+  }
+
+  function removeEntry(id: string) {
+    onChange(entries.filter((e) => e.id !== id));
+  }
+
+  function removeGroup(ids: string[]) {
+    onChange(entries.filter((e) => !ids.includes(e.id)));
+  }
+
+  function addCategoryTo(source: string) {
+    onChange([...entries, { id: newId("cat"), source, category: "", count: 0 }]);
+  }
+
+  function addSource() {
+    const seeded = DEFAULT_CATEGORIES.map((category) => ({ id: newId("cat"), source: "", category, count: 0 }));
+    onChange([...entries, ...seeded]);
+  }
+
+  return (
+    <div className="mt-4">
+      <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+        {label} (by source{unit ? `, ${unit}` : ""})
+      </span>
+      <div className="mt-1 flex flex-col gap-3">
+        {groups.map((group) => (
+          <div key={group.ids[0]} className="rounded-md border p-2" style={{ borderColor: "var(--border)" }}>
+            <div className="mb-2 flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Source, e.g. AJA"
+                value={group.source}
+                onChange={(e) => renameSource(group.ids, e.target.value)}
+                className="flex-1 rounded-md border px-3 py-2 text-sm font-medium"
+                style={inputStyle}
+              />
+              <button
+                type="button"
+                onClick={() => removeGroup(group.ids)}
+                aria-label="Remove source"
+                className="px-2 text-sm"
+                style={{ color: "#d03b3b" }}
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex flex-col gap-2 pl-3">
+              {group.ids.map((id) => {
+                const entry = entries.find((e) => e.id === id)!;
+                return (
+                  <div key={id} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Category, e.g. Artworks"
+                      value={entry.category ?? ""}
+                      onChange={(e) => updateEntry(id, { category: e.target.value })}
+                      className="flex-1 rounded-md border px-3 py-2 text-sm"
+                      style={inputStyle}
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      value={entry.count}
+                      onChange={(e) => updateEntry(id, { count: Number(e.target.value) || 0 })}
+                      className="w-24 rounded-md border px-3 py-2 text-sm"
+                      style={inputStyle}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeEntry(id)}
+                      aria-label="Remove category"
+                      className="px-2 text-sm"
+                      style={{ color: "#d03b3b" }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => addCategoryTo(group.source)}
+                className="self-start text-xs font-medium underline"
+                style={{ color: "var(--ink-secondary)" }}
+              >
+                + Add category
+              </button>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addSource}
+          className="self-start rounded-md border px-3 py-1.5 text-sm font-medium"
+          style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
+        >
+          + Add source
+        </button>
+      </div>
+    </div>
+  );
+}
+
 type Props = {
   publishedMonth: string | null;
   monthsWithData: string[];
@@ -147,6 +287,10 @@ export default function InputClient({
       ...d,
       highlights: { ...d.highlights, [field]: value },
     }));
+  }
+
+  function setQcHoursTotal(value: string) {
+    setData((d) => ({ ...d, qcHoursTotal: value === "" ? 0 : Number(value) }));
   }
 
   function setNote(teamKey: string, value: string) {
@@ -393,6 +537,21 @@ export default function InputClient({
             <div className="flex flex-col gap-4">
               <label className="flex flex-col gap-1">
                 <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                  QC Hours Total
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={data.qcHoursTotal ?? ""}
+                  onChange={(e) => setQcHoursTotal(e.target.value)}
+                  placeholder="Total hours spent on QC this month, across all teams"
+                  className="w-48 rounded-md border px-3 py-2 text-sm"
+                  style={inputStyle}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                   Main Achievements
                 </span>
                 <textarea
@@ -503,6 +662,17 @@ export default function InputClient({
 
                 {(team.sourceBreakdowns ?? []).map((sb) => {
                   const entries = data.sourceBreakdowns[team.key]?.[sb.key] ?? [];
+                  if (sb.hasCategories) {
+                    return (
+                      <CategorizedSourceEditor
+                        key={sb.key}
+                        label={sb.label}
+                        unit={sb.unit}
+                        entries={entries}
+                        onChange={(next) => setSourceEntries(team.key, sb.key, next)}
+                      />
+                    );
+                  }
                   return (
                     <div key={sb.key} className="mt-4">
                       <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>

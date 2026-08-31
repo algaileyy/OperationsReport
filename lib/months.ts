@@ -11,6 +11,15 @@ export function monthLabel(monthKey: string): string {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
+/** e.g. "August 1 – 31, 2026" — the full date span the report covers. */
+export function monthRangeLabel(monthKey: string): string {
+  const [year, month] = monthKey.split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const startStr = start.toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
+  return `${startStr} – ${lastDay}, ${year}`;
+}
+
 /** Recent months for pickers, newest first, including any months that already have data. */
 export function recentMonthOptions(extra: string[] = [], count = 15): string[] {
   const set = new Set<string>(extra);

@@ -1,4 +1,4 @@
-import { monthLabel } from "@/lib/months";
+import { monthRangeLabel } from "@/lib/months";
 import { formatNumber, formatFieldValue } from "@/lib/format";
 import { TEAMS, type TeamConfig, type TeamData } from "@/lib/teams";
 import type { MonthlyReport, SourceEntry } from "@/lib/report";
@@ -25,12 +25,6 @@ const ACCENT_HEX: Record<string, string> = {
 function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", ""), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-
-function mixWithWhite(hex: string, amount: number): string {
-  const [r, g, b] = hexToRgb(hex);
-  const mix = (c: number) => Math.round(c + (255 - c) * amount);
-  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
 }
 
 function hexToHsl(hex: string): [number, number, number] {
@@ -92,29 +86,27 @@ function shadeSteps(hex: string, count: number): string[] {
 }
 
 /** Lightened for legibility as text/dots directly on the dark report background. */
-function accentOnDark(hex: string): string {
-  return mixWithWhite(hex, 0.38);
+/** Grand total of every unitless count across all teams — plain fields plus unitless source-breakdown totals. */
+function totalTasksAcrossTeams(report: MonthlyReport): number {
+  let total = 0;
+  for (const team of TEAMS) {
+    const data = report.teams[team.key] ?? {};
+    for (const f of team.fields) {
+      if (!f.unit) total += data[f.key] ?? 0;
+    }
+    for (const sb of team.sourceBreakdowns ?? []) {
+      if (!sb.unit) {
+        const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
+        total += entries.reduce((s, e) => s + e.count, 0);
+      }
+    }
+  }
+  return total;
 }
 
-/** The one headline number each team leads with in the executive summary. */
-function headlineFor(team: TeamConfig, report: MonthlyReport): { label: string; value: number; unit?: string } {
-  const data = report.teams[team.key] ?? {};
-  switch (team.key) {
-    case "mediaManagement": {
-      const g = team.groups![0];
-      return { label: g.label, value: g.sumKeys.reduce((s, k) => s + (data[k] ?? 0), 0) };
-    }
-    case "archivingSupport": {
-      const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.["archived"] ?? [];
-      return { label: "Archived", value: entries.reduce((s, e) => s + e.count, 0), unit: "TB" };
-    }
-    case "mediaIngest": {
-      const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.["totalAssetsProcessed"] ?? [];
-      return { label: "Total Assets Processed (In GCP)", value: entries.reduce((s, e) => s + e.count, 0) };
-    }
-    default:
-      return { label: team.name, value: 0 };
-  }
+function totalArchived(report: MonthlyReport): number {
+  const entries: SourceEntry[] = report.sourceBreakdowns?.["archivingSupport"]?.["archived"] ?? [];
+  return entries.reduce((s, e) => s + e.count, 0);
 }
 
 function SectionHeading({ n, title }: { n?: number; title: string }) {
@@ -167,6 +159,22 @@ function DividerLabel({ text }: { text: string }) {
   );
 }
 
+function GlanceCard({ label, value, unit, caption }: { label: string; value: number; unit?: string; caption: string }) {
+  return (
+    <div className="rounded-lg border-t-2 p-4" style={{ background: "rgba(0,0,0,0.15)", borderColor: ACCENT_CYAN }}>
+      <p className="mb-1 text-xs font-semibold" style={{ color: ACCENT_CYAN }}>
+        {label}
+      </p>
+      <p className="stat-value text-2xl font-extrabold" style={{ color: TEXT_BRIGHT }}>
+        {formatFieldValue(value, unit)}
+      </p>
+      <p className="text-xs" style={{ color: TEXT_DIM }}>
+        {caption}
+      </p>
+    </div>
+  );
+}
+
 function ExecutiveSummary({ report }: { report: MonthlyReport }) {
   const notes = TEAMS.map((t) => ({ team: t, note: report.notes?.[t.key] })).filter((n) => n.note);
   const hasHighlights =
@@ -178,46 +186,36 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
       style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}
     >
       <SectionHeading title="Executive Summary" />
-      {hasHighlights && (
-        <div
-          className="mb-5 grid gap-x-6 gap-y-4 rounded-xl p-4 sm:grid-cols-3 print:mb-4 print:p-3"
-          style={{ background: "rgba(0,0,0,0.12)" }}
-        >
-          {report.highlights.mainAchievements && (
-            <HighlightBlock color={ACCENT_GREEN} label="Main Achievements" text={report.highlights.mainAchievements} />
-          )}
-          {report.highlights.challenges && (
-            <HighlightBlock color={ACCENT_AMBER} label="Challenges" text={report.highlights.challenges} />
-          )}
-          {report.highlights.newInitiatives && (
-            <HighlightBlock color={ACCENT_CYAN} label="New Initiatives" text={report.highlights.newInitiatives} />
-          )}
-        </div>
-      )}
       <DividerLabel text="This Month at a Glance" />
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        {TEAMS.map((team) => {
-          const accent = accentOnDark(ACCENT_HEX[team.accent]);
-          const headline = headlineFor(team, report);
-          return (
-            <div
-              key={team.key}
-              className="rounded-lg border-t-2 p-4"
-              style={{ background: "rgba(0,0,0,0.15)", borderColor: accent }}
-            >
-              <p className="mb-1 text-xs font-semibold" style={{ color: accent }}>
-                {team.name}
-              </p>
-              <p className="stat-value text-2xl font-extrabold" style={{ color: TEXT_BRIGHT }}>
-                {formatFieldValue(headline.value, headline.unit)}
-              </p>
-              <p className="text-xs" style={{ color: TEXT_DIM }}>
-                {headline.label}
-              </p>
-            </div>
-          );
-        })}
+      <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3 print:mb-4">
+        <GlanceCard label="Total Tasks" value={totalTasksAcrossTeams(report)} caption="Across all teams this month" />
+        <GlanceCard
+          label="Archived Total"
+          value={totalArchived(report)}
+          unit="TB"
+          caption="Digital Archive & Production Support"
+        />
+        <GlanceCard label="QC Hours Total" value={report.qcHoursTotal ?? 0} unit=" hrs" caption="Reported this month" />
       </div>
+      {hasHighlights && (
+        <>
+          <DividerLabel text="Highlights" />
+          <div
+            className="grid gap-x-6 gap-y-4 rounded-xl p-4 sm:grid-cols-3 print:p-3"
+            style={{ background: "rgba(0,0,0,0.12)" }}
+          >
+            {report.highlights.mainAchievements && (
+              <HighlightBlock color={ACCENT_GREEN} label="Main Achievements" text={report.highlights.mainAchievements} />
+            )}
+            {report.highlights.challenges && (
+              <HighlightBlock color={ACCENT_AMBER} label="Challenges" text={report.highlights.challenges} />
+            )}
+            {report.highlights.newInitiatives && (
+              <HighlightBlock color={ACCENT_CYAN} label="New Initiatives" text={report.highlights.newInitiatives} />
+            )}
+          </div>
+        </>
+      )}
       {notes.length > 0 && (
         <>
           <div className="mt-5 print:mt-4">
@@ -344,7 +342,7 @@ export default function ReportView({
             Media Operations Report
           </h1>
           <p className="mt-1 text-sm" style={{ color: TEXT_DIM }}>
-            {monthLabel(monthKey)}
+            {monthRangeLabel(monthKey)}
             {updatedAt &&
               ` · Last updated ${new Date(updatedAt).toLocaleDateString("en-US", {
                 month: "short",
@@ -404,7 +402,10 @@ export default function ReportView({
                       {sourceBreakdowns.map((sb) => {
                         const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
                         const total = entries.reduce((s, e) => s + e.count, 0);
-                        const detail = entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
+                        const detail = entries.map((e) => {
+                          const sourceLabel = e.source || "(unnamed source)";
+                          return { label: e.category ? `${sourceLabel} — ${e.category}` : sourceLabel, value: e.count };
+                        });
                         const alt = rowIndex++ % 2 === 1;
                         return (
                           <GroupRow key={sb.key} label={sb.label} total={total} detail={detail} altRow={alt} unit={sb.unit} />

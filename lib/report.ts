@@ -3,6 +3,8 @@ import { TEAMS, type TeamData } from "./teams";
 export type SourceEntry = {
   id: string;
   source: string;
+  /** Optional sub-category within a source (e.g. Artworks/Batching/Thumbnails) — only used by breakdowns with hasCategories set. */
+  category?: string;
   count: number;
 };
 
@@ -21,6 +23,8 @@ export type MonthlyReport = {
   notes: Record<string, string>;
   sourceBreakdowns: SourceBreakdowns;
   highlights: ReportHighlights;
+  /** Manually entered — total QC hours across all teams this month, shown in the Executive Summary glance row. */
+  qcHoursTotal: number;
 };
 
 export function emptyReport(): MonthlyReport {
@@ -35,7 +39,13 @@ export function emptyReport(): MonthlyReport {
       sourceBreakdowns[t.key][sb.key] = [];
     }
   }
-  return { teams, notes, sourceBreakdowns, highlights: { mainAchievements: "", challenges: "", newInitiatives: "" } };
+  return {
+    teams,
+    notes,
+    sourceBreakdowns,
+    highlights: { mainAchievements: "", challenges: "", newInitiatives: "" },
+    qcHoursTotal: 0,
+  };
 }
 
 /** Coerce arbitrary JSON into a well-formed MonthlyReport, dropping anything malformed. */
@@ -45,6 +55,7 @@ export function normalizeReport(raw: unknown): MonthlyReport {
     notes?: Record<string, unknown>;
     sourceBreakdowns?: Record<string, Record<string, unknown>>;
     highlights?: Record<string, unknown>;
+    qcHoursTotal?: unknown;
   } | null;
   const teamsSrc = src?.teams ?? {};
   const notesSrc = src?.notes ?? {};
@@ -77,6 +88,7 @@ export function normalizeReport(raw: unknown): MonthlyReport {
             return {
               id: typeof entry?.id === "string" ? entry.id : `${sb.key}-${i}`,
               source: typeof entry?.source === "string" ? entry.source : "",
+              ...(typeof entry?.category === "string" ? { category: entry.category } : {}),
               count: Number.isFinite(count) && count >= 0 ? count : 0,
             };
           })
@@ -91,5 +103,13 @@ export function normalizeReport(raw: unknown): MonthlyReport {
     newInitiatives: typeof highlightsSrc.newInitiatives === "string" ? highlightsSrc.newInitiatives : "",
   };
 
-  return { teams, notes, sourceBreakdowns, highlights };
+  const qcHoursTotal = Number(src?.qcHoursTotal);
+
+  return {
+    teams,
+    notes,
+    sourceBreakdowns,
+    highlights,
+    qcHoursTotal: Number.isFinite(qcHoursTotal) && qcHoursTotal >= 0 ? qcHoursTotal : 0,
+  };
 }
