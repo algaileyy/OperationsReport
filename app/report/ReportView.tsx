@@ -85,7 +85,6 @@ function shadeSteps(hex: string, count: number): string[] {
   });
 }
 
-/** Lightened for legibility as text/dots directly on the dark report background. */
 /** Grand total of every unitless count across all teams — plain fields plus unitless source-breakdown totals. */
 function totalTasksAcrossTeams(report: MonthlyReport): number {
   let total = 0;
@@ -107,6 +106,27 @@ function totalTasksAcrossTeams(report: MonthlyReport): number {
 function totalArchived(report: MonthlyReport): number {
   const entries: SourceEntry[] = report.sourceBreakdowns?.["archivingSupport"]?.["archived"] ?? [];
   return entries.reduce((s, e) => s + e.count, 0);
+}
+
+function projectsArchivedCount(report: MonthlyReport): number {
+  return report.teams["mediaManagement"]?.["projectsArchived"] ?? 0;
+}
+
+function assetsCirculationCount(report: MonthlyReport): number {
+  return report.teams["mediaManagement"]?.["assetsCirculation"] ?? 0;
+}
+
+/** Media Ingest's "Total Assets Processed (In GCP)" is derived, not entered — one source's total is
+ * whatever it received across both ingest breakdowns, so tracking it separately would just be the same
+ * numbers re-entered by hand. */
+function processedBySource(report: MonthlyReport): { source: string; count: number }[] {
+  const catchUp: SourceEntry[] = report.sourceBreakdowns?.["mediaIngest"]?.["ingestedCatchUpContent"] ?? [];
+  const archive: SourceEntry[] = report.sourceBreakdowns?.["mediaIngest"]?.["ingestedArchiveContent"] ?? [];
+  const totals = new Map<string, number>();
+  for (const e of [...catchUp, ...archive]) {
+    totals.set(e.source, (totals.get(e.source) ?? 0) + e.count);
+  }
+  return Array.from(totals.entries()).map(([source, count]) => ({ source, count }));
 }
 
 function SectionHeading({ n, title }: { n?: number; title: string }) {
@@ -159,7 +179,22 @@ function DividerLabel({ text }: { text: string }) {
   );
 }
 
-function GlanceCard({ label, value, unit, caption }: { label: string; value: number; unit?: string; caption: string }) {
+function GlanceCard({
+  label,
+  value,
+  unit,
+  caption,
+  secondaryLabel,
+  secondaryValue,
+}: {
+  label: string;
+  value: number;
+  unit?: string;
+  caption: string;
+  /** An optional second, smaller stat shown in the same card — for a related number that isn't the same unit and so can't just be summed in. */
+  secondaryLabel?: string;
+  secondaryValue?: number;
+}) {
   return (
     <div className="rounded-lg border-t-2 p-4" style={{ background: "rgba(0,0,0,0.15)", borderColor: ACCENT_CYAN }}>
       <p className="mb-1 text-xs font-semibold" style={{ color: ACCENT_CYAN }}>
@@ -171,6 +206,11 @@ function GlanceCard({ label, value, unit, caption }: { label: string; value: num
       <p className="text-xs" style={{ color: TEXT_DIM }}>
         {caption}
       </p>
+      {secondaryLabel != null && (
+        <p className="mt-2 border-t pt-2 text-sm" style={{ borderColor: PANEL_BORDER, color: TEXT_DIM }}>
+          {secondaryLabel}: <strong style={{ color: TEXT_BRIGHT }}>{formatNumber(secondaryValue)}</strong>
+        </p>
+      )}
     </div>
   );
 }
@@ -187,15 +227,18 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
     >
       <SectionHeading title="Executive Summary" />
       <DividerLabel text="This Month at a Glance" />
-      <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-3 print:mb-4">
+      <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4 print:mb-4">
         <GlanceCard label="Total Tasks" value={totalTasksAcrossTeams(report)} caption="Across all teams this month" />
         <GlanceCard
           label="Archived Total"
           value={totalArchived(report)}
           unit="TB"
           caption="Digital Archive & Production Support"
+          secondaryLabel="Projects Archived"
+          secondaryValue={projectsArchivedCount(report)}
         />
         <GlanceCard label="QC Hours Total" value={report.qcHoursTotal ?? 0} unit=" hrs" caption="Reported this month" />
+        <GlanceCard label="Assets Circulation" value={assetsCirculationCount(report)} caption="Media Desk" />
       </div>
       {hasHighlights && (
         <>
@@ -402,15 +445,28 @@ export default function ReportView({
                       {sourceBreakdowns.map((sb) => {
                         const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
                         const total = entries.reduce((s, e) => s + e.count, 0);
-                        const detail = entries.map((e) => {
-                          const sourceLabel = e.source || "(unnamed source)";
-                          return { label: e.category ? `${sourceLabel} — ${e.category}` : sourceLabel, value: e.count };
-                        });
+                        const detail = entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
                         const alt = rowIndex++ % 2 === 1;
                         return (
                           <GroupRow key={sb.key} label={sb.label} total={total} detail={detail} altRow={alt} unit={sb.unit} />
                         );
                       })}
+                      {team.key === "mediaIngest" &&
+                        (() => {
+                          const processed = processedBySource(report);
+                          const total = processed.reduce((s, p) => s + p.count, 0);
+                          const detail = processed.map((p) => ({ label: p.source || "(unnamed source)", value: p.count }));
+                          const alt = rowIndex++ % 2 === 1;
+                          return (
+                            <GroupRow
+                              key="totalAssetsProcessed"
+                              label="Total Assets Processed (In GCP)"
+                              total={total}
+                              detail={detail}
+                              altRow={alt}
+                            />
+                          );
+                        })()}
                       {plainFields.map((field) => {
                         const alt = rowIndex++ % 2 === 1;
                         return (

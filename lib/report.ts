@@ -3,8 +3,6 @@ import { TEAMS, type TeamData } from "./teams";
 export type SourceEntry = {
   id: string;
   source: string;
-  /** Optional sub-category within a source (e.g. Artworks/Batching/Thumbnails) — only used by breakdowns with hasCategories set. */
-  category?: string;
   count: number;
 };
 
@@ -88,7 +86,6 @@ export function normalizeReport(raw: unknown): MonthlyReport {
             return {
               id: typeof entry?.id === "string" ? entry.id : `${sb.key}-${i}`,
               source: typeof entry?.source === "string" ? entry.source : "",
-              ...(typeof entry?.category === "string" ? { category: entry.category } : {}),
               count: Number.isFinite(count) && count >= 0 ? count : 0,
             };
           })
