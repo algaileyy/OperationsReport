@@ -23,6 +23,8 @@ export type MonthlyReport = {
   highlights: ReportHighlights;
   /** Manually entered — total QC hours across all teams this month, shown in the Executive Summary glance row. */
   qcHoursTotal: number;
+  /** Report-wide note not tied to any one team — shown first in the Executive Summary's Notes list. */
+  generalNotes: string;
 };
 
 export function emptyReport(): MonthlyReport {
@@ -43,6 +45,7 @@ export function emptyReport(): MonthlyReport {
     sourceBreakdowns,
     highlights: { mainAchievements: "", challenges: "", newInitiatives: "" },
     qcHoursTotal: 0,
+    generalNotes: "",
   };
 }
 
@@ -54,6 +57,7 @@ export function normalizeReport(raw: unknown): MonthlyReport {
     sourceBreakdowns?: Record<string, Record<string, unknown>>;
     highlights?: Record<string, unknown>;
     qcHoursTotal?: unknown;
+    generalNotes?: unknown;
   } | null;
   const teamsSrc = src?.teams ?? {};
   const notesSrc = src?.notes ?? {};
@@ -108,5 +112,6 @@ export function normalizeReport(raw: unknown): MonthlyReport {
     sourceBreakdowns,
     highlights,
     qcHoursTotal: Number.isFinite(qcHoursTotal) && qcHoursTotal >= 0 ? qcHoursTotal : 0,
+    generalNotes: typeof src?.generalNotes === "string" ? src.generalNotes : "",
   };
 }

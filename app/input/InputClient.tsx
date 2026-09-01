@@ -153,6 +153,10 @@ export default function InputClient({
     setData((d) => ({ ...d, qcHoursTotal: value === "" ? 0 : Number(value) }));
   }
 
+  function setGeneralNotes(value: string) {
+    setData((d) => ({ ...d, generalNotes: value }));
+  }
+
   function setNote(teamKey: string, value: string) {
     setData((d) => ({
       ...d,
@@ -445,6 +449,19 @@ export default function InputClient({
                   onChange={(e) => setHighlight("newInitiatives", e.target.value)}
                   rows={3}
                   placeholder="What's starting up or planned…"
+                  className="rounded-md border px-3 py-2 text-sm"
+                  style={inputStyle}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                  General Notes
+                </span>
+                <textarea
+                  value={data.generalNotes}
+                  onChange={(e) => setGeneralNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Anything worth calling out that isn't specific to one team…"
                   className="rounded-md border px-3 py-2 text-sm"
                   style={inputStyle}
                 />

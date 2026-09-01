@@ -259,12 +259,17 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
           </div>
         </>
       )}
-      {notes.length > 0 && (
+      {(report.generalNotes || notes.length > 0) && (
         <>
           <div className="mt-5 print:mt-4">
             <DividerLabel text="Notes" />
           </div>
           <ul className="flex flex-col gap-1.5 text-sm" style={{ color: TEXT_DIM }}>
+            {report.generalNotes && (
+              <li>
+                <strong style={{ color: TEXT_BRIGHT }}>General:</strong> {report.generalNotes}
+              </li>
+            )}
             {notes.map(({ team, note }) => (
               <li key={team.key}>
                 <strong style={{ color: TEXT_BRIGHT }}>{team.name}:</strong> {note}
