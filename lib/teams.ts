@@ -76,6 +76,7 @@ export const TEAMS: TeamConfig[] = [
       { key: "catchUpOriginalsReceived", label: "Catch-up Originals received" },
       { key: "projectsArchived", label: "Projects Archived" },
       { key: "rushesProjectFilesReceived", label: "Rushes & Project Files received" },
+      { key: "masterExports", label: "Master Exports" },
     ],
     groups: [
       {
@@ -86,12 +87,14 @@ export const TEAMS: TeamConfig[] = [
           "catchUpOriginalsReceived",
           "projectsArchived",
           "rushesProjectFilesReceived",
+          "masterExports",
         ],
         detailFieldKeys: [
           "originalAssetsUploadedFrameIo",
           "catchUpOriginalsReceived",
           "projectsArchived",
           "rushesProjectFilesReceived",
+          "masterExports",
         ],
       },
     ],
