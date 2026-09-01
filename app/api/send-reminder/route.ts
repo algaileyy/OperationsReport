@@ -10,6 +10,7 @@ export async function POST() {
     return NextResponse.json({ ok: true, sent: result.sent });
   } catch (err) {
     console.error("send-reminder error:", err);
-    return NextResponse.json({ error: "Failed to send reminder." }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Failed to send reminder.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
