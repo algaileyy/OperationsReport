@@ -56,6 +56,16 @@ export type TeamConfig = {
 
 export const TEAMS: TeamConfig[] = [
   {
+    key: "mediaIngest",
+    name: "Media Ingest",
+    accent: "violet",
+    fields: [{ key: "qualityControlCompleted", label: "Quality Control Completed" }],
+    sourceBreakdowns: [
+      { key: "ingestedCatchUpContent", label: "Ingested Catch-up Content" },
+      { key: "ingestedArchiveContent", label: "Ingested Archive Content" },
+    ],
+  },
+  {
     key: "mediaManagement",
     name: "Media Desk",
     accent: "orange",
@@ -107,16 +117,6 @@ export const TEAMS: TeamConfig[] = [
     sourceBreakdowns: [
       { key: "archived", label: "Archived", unit: "TB" },
       { key: "storageFreed", label: "Storage Freed", unit: "TB" },
-    ],
-  },
-  {
-    key: "mediaIngest",
-    name: "Media Ingest",
-    accent: "violet",
-    fields: [{ key: "qualityControlCompleted", label: "Quality Control Completed" }],
-    sourceBreakdowns: [
-      { key: "ingestedCatchUpContent", label: "Ingested Catch-up Content" },
-      { key: "ingestedArchiveContent", label: "Ingested Archive Content" },
     ],
   },
 ];

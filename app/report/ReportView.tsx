@@ -154,15 +154,25 @@ function Td({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Each line the person typed becomes its own bullet — strips a leading dash/asterisk/dot they may have typed themselves. */
+function commentLines(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.replace(/^\s*[-*•]\s*/, "").trim())
+    .filter(Boolean);
+}
+
 function HighlightBlock({ color, label, text }: { color: string; label: string; text: string }) {
   return (
     <div className="border-l-2 pl-3" style={{ borderColor: color }}>
       <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color }}>
         {label}
       </p>
-      <p className="whitespace-pre-line text-sm" style={{ color: TEXT_DIM }}>
-        {text}
-      </p>
+      <ul className="list-disc space-y-0.5 pl-4 text-sm" style={{ color: TEXT_DIM }}>
+        {commentLines(text).map((line, i) => (
+          <li key={i}>{line}</li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -216,7 +226,6 @@ function GlanceCard({
 }
 
 function ExecutiveSummary({ report }: { report: MonthlyReport }) {
-  const notes = TEAMS.map((t) => ({ team: t, note: report.notes?.[t.key] })).filter((n) => n.note);
   const hasHighlights =
     report.highlights.mainAchievements || report.highlights.challenges || report.highlights.newInitiatives;
 
@@ -257,25 +266,6 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
               <HighlightBlock color={ACCENT_CYAN} label="New Initiatives" text={report.highlights.newInitiatives} />
             )}
           </div>
-        </>
-      )}
-      {(report.generalNotes || notes.length > 0) && (
-        <>
-          <div className="mt-5 print:mt-4">
-            <DividerLabel text="Notes" />
-          </div>
-          <ul className="flex flex-col gap-1.5 text-sm" style={{ color: TEXT_DIM }}>
-            {report.generalNotes && (
-              <li>
-                <strong style={{ color: TEXT_BRIGHT }}>General:</strong> {report.generalNotes}
-              </li>
-            )}
-            {notes.map(({ team, note }) => (
-              <li key={team.key}>
-                <strong style={{ color: TEXT_BRIGHT }}>{team.name}:</strong> {note}
-              </li>
-            ))}
-          </ul>
         </>
       )}
     </section>
@@ -389,7 +379,7 @@ export default function ReportView({
           <h1 className="text-2xl font-extrabold sm:text-3xl" style={{ color: TEXT_BRIGHT }}>
             Media Operations Report
           </h1>
-          <p className="mt-1 text-sm" style={{ color: TEXT_DIM }}>
+          <p className="mt-1 text-base" style={{ color: TEXT_DIM }}>
             {monthRangeLabel(monthKey)}
             {updatedAt &&
               ` · Last updated ${new Date(updatedAt).toLocaleDateString("en-US", {
