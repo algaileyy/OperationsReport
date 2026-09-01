@@ -61,6 +61,7 @@ export const TEAMS: TeamConfig[] = [
     accent: "violet",
     fields: [{ key: "qualityControlCompleted", label: "Quality Control Completed" }],
     sourceBreakdowns: [
+      { key: "catchUpContentReceived", label: "Catch-up Content Received" },
       { key: "ingestedCatchUpContent", label: "Ingested Catch-up Content" },
       { key: "ingestedArchiveContent", label: "Ingested Archive Content" },
     ],
