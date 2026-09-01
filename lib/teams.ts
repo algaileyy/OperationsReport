@@ -59,9 +59,10 @@ export const TEAMS: TeamConfig[] = [
     key: "mediaIngest",
     name: "Media Ingest",
     accent: "violet",
-    fields: [{ key: "qualityControlCompleted", label: "Quality Control Completed" }],
+    fields: [{ key: "qualityControlCompleted", label: "Quality Control Completed (Hours)" }],
     sourceBreakdowns: [
       { key: "catchUpContentReceived", label: "Catch-up Content Received" },
+      { key: "archiveContentReceived", label: "Archive Content Received" },
       { key: "ingestedCatchUpContent", label: "Ingested Catch-up Content" },
       { key: "ingestedArchiveContent", label: "Ingested Archive Content" },
     ],
@@ -110,7 +111,7 @@ export const TEAMS: TeamConfig[] = [
     groups: [
       {
         key: "totalQcCompleted",
-        label: "Total Quality Control Completed",
+        label: "Quality Control Completed (Assets)",
         sumKeys: ["projectFilesChecked", "textlessCleansCompleted"],
         detailFieldKeys: ["projectFilesChecked", "textlessCleansCompleted"],
       },
