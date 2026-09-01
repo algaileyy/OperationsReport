@@ -1,6 +1,6 @@
 import { monthRangeLabel } from "@/lib/months";
 import { formatNumber, formatFieldValue } from "@/lib/format";
-import { TEAMS, type TeamConfig, type TeamData } from "@/lib/teams";
+import { TEAMS, getTeam, type TeamConfig, type TeamData } from "@/lib/teams";
 import type { MonthlyReport, SourceEntry } from "@/lib/report";
 import GroupRow from "./GroupRow";
 import ExportButton from "./ExportButton";
@@ -112,8 +112,12 @@ function projectsArchivedCount(report: MonthlyReport): number {
   return report.teams["mediaManagement"]?.["projectsArchived"] ?? 0;
 }
 
-function assetsCirculationCount(report: MonthlyReport): number {
-  return report.teams["mediaManagement"]?.["assetsCirculation"] ?? 0;
+/** The "Assets Circulation" glance card shows Media Desk's total activity, not a single field. */
+function mediaDeskActivityTotal(report: MonthlyReport): number {
+  const group = getTeam("mediaManagement")?.groups?.[0];
+  if (!group) return 0;
+  const data = report.teams["mediaManagement"] ?? {};
+  return group.sumKeys.reduce((s, k) => s + (data[k] ?? 0), 0);
 }
 
 /** Media Ingest's "Total Assets Processed (In GCP)" is derived, not entered — one source's total is
@@ -247,7 +251,7 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
           secondaryValue={projectsArchivedCount(report)}
         />
         <GlanceCard label="QC Hours Total" value={report.qcHoursTotal ?? 0} unit=" hrs" caption="Reported this month" />
-        <GlanceCard label="Assets Circulation" value={assetsCirculationCount(report)} caption="Media Desk" />
+        <GlanceCard label="Assets Circulation" value={mediaDeskActivityTotal(report)} caption="Media Desk" />
       </div>
       {hasHighlights && (
         <>

@@ -75,7 +75,6 @@ export const TEAMS: TeamConfig[] = [
       { key: "originalAssetsUploadedFrameIo", label: "Original Assets uploaded to Frame.io" },
       { key: "catchUpOriginalsReceived", label: "Catch-up Originals received" },
       { key: "projectsArchived", label: "Projects Archived" },
-      { key: "assetsCirculation", label: "Assets Circulation" },
       { key: "rushesProjectFilesReceived", label: "Rushes & Project Files received" },
     ],
     groups: [
@@ -86,14 +85,12 @@ export const TEAMS: TeamConfig[] = [
           "originalAssetsUploadedFrameIo",
           "catchUpOriginalsReceived",
           "projectsArchived",
-          "assetsCirculation",
           "rushesProjectFilesReceived",
         ],
         detailFieldKeys: [
           "originalAssetsUploadedFrameIo",
           "catchUpOriginalsReceived",
           "projectsArchived",
-          "assetsCirculation",
           "rushesProjectFilesReceived",
         ],
       },
