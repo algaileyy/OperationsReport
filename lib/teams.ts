@@ -89,7 +89,7 @@ export const TEAMS: TeamConfig[] = [
   },
   {
     key: "archivingSupport",
-    name: "Digital Archive & Production Support Team",
+    name: "Digital Archive & Production Support",
     accent: "aqua",
     fields: [
       { key: "projectFilesChecked", label: "Project files checked" },
@@ -111,7 +111,7 @@ export const TEAMS: TeamConfig[] = [
   },
   {
     key: "mediaIngest",
-    name: "Media Ingest Team",
+    name: "Media Ingest",
     accent: "violet",
     fields: [{ key: "qualityControlCompleted", label: "Quality Control Completed" }],
     sourceBreakdowns: [

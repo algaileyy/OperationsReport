@@ -425,6 +425,9 @@ export default function ReportView({
                 style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}
               >
                 <SectionHeading n={idx + 1} title={team.name} />
+                <div className="mb-4">
+                  <TeamPie team={team} data={teamData} sourceTotals={sourceTotals} />
+                </div>
                 <div className="overflow-x-auto rounded-lg" style={{ border: `1px solid ${PANEL_BORDER}` }}>
                   <table className="w-full border-collapse">
                     <thead>
@@ -486,9 +489,6 @@ export default function ReportView({
                     {note}
                   </p>
                 )}
-                <div className="mt-4">
-                  <TeamPie team={team} data={teamData} sourceTotals={sourceTotals} />
-                </div>
               </section>
             );
           })}
