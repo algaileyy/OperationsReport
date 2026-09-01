@@ -420,7 +420,7 @@ export default function ReportView({
             return (
               <section
                 key={team.key}
-                className="rounded-2xl p-5 print:rounded-lg print:p-4"
+                className="rounded-2xl p-5 print:rounded-lg print:p-4 print:break-inside-avoid"
                 style={{ background: PANEL, border: `1px solid ${PANEL_BORDER}` }}
               >
                 <SectionHeading n={idx + 1} title={team.name} />
