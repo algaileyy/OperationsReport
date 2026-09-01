@@ -36,7 +36,7 @@ export default function GroupRow({
       >
         <td className="px-3 py-2 text-sm">
           <span className="inline-flex items-center gap-2 font-bold" style={{ color: TEXT_BRIGHT }}>
-            <span className="inline-block w-3 text-xs" style={{ color: "#5fd4f4" }}>
+            <span className="inline-block w-4 text-base" style={{ color: "#5fd4f4" }}>
               {open ? "▾" : "▸"}
             </span>
             {label}

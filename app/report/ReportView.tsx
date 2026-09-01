@@ -393,7 +393,7 @@ export default function ReportView({
         <ExportButton />
       </div>
 
-      <div className="mx-auto max-w-4xl px-4 pb-12 sm:px-6 lg:px-10 print:max-w-none print:px-8 print:pb-6">
+      <div className="mx-auto max-w-5xl px-4 pb-12 sm:px-6 lg:px-10 print:max-w-none print:px-8 print:pb-6">
         <ExecutiveSummary report={report} />
 
         <div className="flex flex-col gap-6 print:gap-4">
