@@ -467,7 +467,7 @@ export default function ReportView({
                               detail={[]}
                               altRow={altParent}
                               unit=" H"
-                              infoText="AJ360 QC checks frame quality (black frames, freezes, drops, artifacts), audio (codec, sample rate, loudness) and color range/aspect ratio. Assets failing any check are rejected, not published."
+                              infoText="Quality control checks frame quality (black frames, freezes, drops, artifacts), audio (codec, sample rate, loudness) and color range/aspect ratio. Assets failing any check are rejected, not published."
                             >
                               {nestedRow("catchUpContentFailed", "Catch-up Content Failed", altChildren[0])}
                               {nestedRow("archiveContentFailed", "Archive Content Failed", altChildren[1])}
