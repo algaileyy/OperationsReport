@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { formatFieldValue } from "@/lib/format";
 
 const TEXT_BRIGHT = "#ffffff";
@@ -16,12 +16,19 @@ export default function GroupRow({
   detail,
   altRow,
   unit,
+  indent = false,
+  children,
 }: {
   label: string;
   total: number;
   detail: DetailItem[];
   altRow: boolean;
   unit?: string;
+  /** Renders the header and detail rows one level further right — for a GroupRow nested inside
+   * another GroupRow's expanded state. */
+  indent?: boolean;
+  /** Extra rows (typically nested GroupRows) shown after `detail` while this row is open. */
+  children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -34,7 +41,7 @@ export default function GroupRow({
         className="cursor-pointer select-none"
         style={{ background: altRow ? ROW_ALT : "transparent" }}
       >
-        <td className="px-3 py-2 text-sm">
+        <td className={indent ? "py-2 pl-9 pr-3 text-sm" : "px-3 py-2 text-sm"}>
           <span className="inline-flex items-center gap-2 font-bold" style={{ color: TEXT_BRIGHT }}>
             <span className="inline-block w-4 text-base" style={{ color: "#5fd4f4" }}>
               {open ? "▾" : "▸"}
@@ -46,17 +53,21 @@ export default function GroupRow({
           {formatFieldValue(total, unit)}
         </td>
       </tr>
-      {open &&
-        detail.map((d) => (
-          <tr key={d.label} style={{ background: DETAIL_BG }}>
-            <td className="py-1.5 pl-9 pr-3 text-sm" style={{ color: TEXT_DETAIL }}>
-              {d.label}
-            </td>
-            <td className="px-3 py-1.5 text-sm" style={{ color: TEXT_DETAIL }}>
-              {formatFieldValue(d.value, unit)}
-            </td>
-          </tr>
-        ))}
+      {open && (
+        <>
+          {detail.map((d) => (
+            <tr key={d.label} style={{ background: DETAIL_BG }}>
+              <td className={indent ? "py-1.5 pl-16 pr-3 text-sm" : "py-1.5 pl-9 pr-3 text-sm"} style={{ color: TEXT_DETAIL }}>
+                {d.label}
+              </td>
+              <td className="px-3 py-1.5 text-sm" style={{ color: TEXT_DETAIL }}>
+                {formatFieldValue(d.value, unit)}
+              </td>
+            </tr>
+          ))}
+          {children}
+        </>
+      )}
     </>
   );
 }
