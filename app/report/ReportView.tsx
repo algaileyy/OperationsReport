@@ -499,7 +499,9 @@ export default function ReportView({
                               infoText={
                                 sb.key === "artworkAndBadgesIngested"
                                   ? "Badges get burnt onto show and movie artwork using a tool operated by Media Ingest team."
-                                  : undefined
+                                  : sb.key === "archived"
+                                    ? "The archive process is the workflow for preparing, validating, and permanently storing production media (masters, assets, episodes, and project files) into long-term archive storage — primarily the DIVA system — while freeing up space on active servers."
+                                    : undefined
                               }
                             />
                           );
