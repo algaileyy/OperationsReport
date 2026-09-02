@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import { monthLabel } from "@/lib/months";
-import { TEAMS } from "@/lib/teams";
+import { TEAMS, type FieldConfig } from "@/lib/teams";
 import type { MonthlyReport, ReportHighlights, SourceEntry } from "@/lib/report";
 
 const ACCENT_HEX: Record<string, string> = {
@@ -499,98 +499,140 @@ export default function InputClient({
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {team.fields.map((field) => (
-                    <label key={field.key} className="flex flex-col gap-1">
-                      <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                        {field.label}
-                        {field.unit && ` (${field.unit})`}
-                      </span>
-                      <input
-                        type="number"
-                        min={0}
-                        inputMode="numeric"
-                        value={teamData[field.key] ?? ""}
-                        onChange={(e) => setField(team.key, field.key, e.target.value)}
-                        className="rounded-md border px-3 py-2 text-sm"
-                        style={inputStyle}
-                      />
-                    </label>
-                  ))}
+                  {team.fields
+                    .filter((field) => !field.segmentSlot)
+                    .map((field) => (
+                      <label key={field.key} className="flex flex-col gap-1">
+                        <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                          {field.label}
+                          {field.unit && ` (${field.unit})`}
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          value={teamData[field.key] ?? ""}
+                          onChange={(e) => setField(team.key, field.key, e.target.value)}
+                          className="rounded-md border px-3 py-2 text-sm"
+                          style={inputStyle}
+                        />
+                      </label>
+                    ))}
                 </div>
 
-                {(team.sourceBreakdowns ?? []).map((sb, i) => {
-                  const entries = data.sourceBreakdowns[team.key]?.[sb.key] ?? [];
+                {(() => {
                   const breakdowns = team.sourceBreakdowns ?? [];
-                  const isNewSegment = !!sb.segment && sb.segment !== breakdowns[i - 1]?.segment;
-                  return (
-                    <div key={sb.key} className={isNewSegment ? "mt-6" : "mt-4"}>
-                      {isNewSegment && (
+                  const slotField = (segment: string, position: "start" | "end") =>
+                    team.fields.find((f) => f.segmentSlot?.segment === segment && f.segmentSlot.position === position);
+
+                  const plainFieldBlock = (field: FieldConfig, topMargin: string) => (
+                    <div key={field.key} className={topMargin}>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                          {field.label}
+                          {field.unit && ` (${field.unit})`}
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          inputMode="numeric"
+                          value={teamData[field.key] ?? ""}
+                          onChange={(e) => setField(team.key, field.key, e.target.value)}
+                          className="w-full max-w-xs rounded-md border px-3 py-2 text-sm"
+                          style={inputStyle}
+                        />
+                      </label>
+                    </div>
+                  );
+
+                  const nodes: ReactNode[] = [];
+                  breakdowns.forEach((sb, i) => {
+                    const entries = data.sourceBreakdowns[team.key]?.[sb.key] ?? [];
+                    const isNewSegment = !!sb.segment && sb.segment !== breakdowns[i - 1]?.segment;
+                    const isLastOfSegment = !!sb.segment && sb.segment !== breakdowns[i + 1]?.segment;
+
+                    if (isNewSegment) {
+                      nodes.push(
                         <h3
-                          className="mb-2 border-t pt-4 text-xs font-semibold uppercase tracking-wide"
+                          key={`heading-${sb.segment}`}
+                          className="mb-2 mt-6 border-t pt-4 text-xs font-semibold uppercase tracking-wide"
                           style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
                         >
                           {sb.segment}
                         </h3>
-                      )}
-                      <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                        {sb.label} (by source{sb.unit ? `, ${sb.unit}` : ""})
-                      </span>
-                      <div className="mt-1 flex flex-col gap-2">
-                        {entries.map((entry) => (
-                          <div key={entry.id} className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              placeholder="Source, e.g. Atheer"
-                              value={entry.source}
-                              onChange={(e) =>
-                                setSourceEntries(
-                                  team.key,
-                                  sb.key,
-                                  entries.map((x) => (x.id === entry.id ? { ...x, source: e.target.value } : x))
-                                )
-                              }
-                              className="flex-1 rounded-md border px-3 py-2 text-sm"
-                              style={inputStyle}
-                            />
-                            <input
-                              type="number"
-                              min={0}
-                              value={entry.count}
-                              onChange={(e) =>
-                                setSourceEntries(
-                                  team.key,
-                                  sb.key,
-                                  entries.map((x) => (x.id === entry.id ? { ...x, count: Number(e.target.value) || 0 } : x))
-                                )
-                              }
-                              className="w-24 rounded-md border px-3 py-2 text-sm"
-                              style={inputStyle}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setSourceEntries(team.key, sb.key, entries.filter((x) => x.id !== entry.id))}
-                              aria-label="Remove source"
-                              className="px-2 text-sm"
-                              style={{ color: "#d03b3b" }}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSourceEntries(team.key, sb.key, [...entries, { id: newId("src"), source: "", count: 0 }])
-                          }
-                          className="self-start rounded-md border px-3 py-1.5 text-sm font-medium"
-                          style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
-                        >
-                          + Add source
-                        </button>
+                      );
+                      const startField = slotField(sb.segment!, "start");
+                      if (startField) nodes.push(plainFieldBlock(startField, "mb-4"));
+                    }
+
+                    nodes.push(
+                      <div key={sb.key} className={isNewSegment ? "" : "mt-4"}>
+                        <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                          {sb.label} (by source{sb.unit ? `, ${sb.unit}` : ""})
+                        </span>
+                        <div className="mt-1 flex flex-col gap-2">
+                          {entries.map((entry) => (
+                            <div key={entry.id} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder="Source, e.g. Atheer"
+                                value={entry.source}
+                                onChange={(e) =>
+                                  setSourceEntries(
+                                    team.key,
+                                    sb.key,
+                                    entries.map((x) => (x.id === entry.id ? { ...x, source: e.target.value } : x))
+                                  )
+                                }
+                                className="flex-1 rounded-md border px-3 py-2 text-sm"
+                                style={inputStyle}
+                              />
+                              <input
+                                type="number"
+                                min={0}
+                                value={entry.count}
+                                onChange={(e) =>
+                                  setSourceEntries(
+                                    team.key,
+                                    sb.key,
+                                    entries.map((x) => (x.id === entry.id ? { ...x, count: Number(e.target.value) || 0 } : x))
+                                  )
+                                }
+                                className="w-24 rounded-md border px-3 py-2 text-sm"
+                                style={inputStyle}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setSourceEntries(team.key, sb.key, entries.filter((x) => x.id !== entry.id))}
+                                aria-label="Remove source"
+                                className="px-2 text-sm"
+                                style={{ color: "#d03b3b" }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSourceEntries(team.key, sb.key, [...entries, { id: newId("src"), source: "", count: 0 }])
+                            }
+                            className="self-start rounded-md border px-3 py-1.5 text-sm font-medium"
+                            style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
+                          >
+                            + Add source
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+
+                    if (isLastOfSegment) {
+                      const endField = slotField(sb.segment!, "end");
+                      if (endField) nodes.push(plainFieldBlock(endField, "mt-4"));
+                    }
+                  });
+                  return nodes;
+                })()}
 
                 <label className="mt-4 flex flex-col gap-1">
                   <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>

@@ -412,7 +412,11 @@ export default function ReportView({
             const teamData = report.teams[team.key] ?? {};
             const groups = team.groups ?? [];
             const groupedKeys = new Set(groups.flatMap((g) => g.detailFieldKeys));
-            const plainFields = team.fields.filter((f) => !groupedKeys.has(f.key) && (teamData[f.key] ?? 0) !== 0);
+            // A field with a segmentSlot is rendered inline within a team-specific custom tree
+            // below (e.g. archivingSupport's Textless/Cleans QC), not as a generic flat row.
+            const plainFields = team.fields.filter(
+              (f) => !groupedKeys.has(f.key) && !f.segmentSlot && (teamData[f.key] ?? 0) !== 0
+            );
             const fieldLabel = (key: string) => team.fields.find((f) => f.key === key)?.label ?? key;
             const note = report.notes?.[team.key];
             const sourceBreakdowns = team.sourceBreakdowns ?? [];
@@ -468,7 +472,6 @@ export default function ReportView({
                           }
                           if (team.key === "archivingSupport") {
                             return ![
-                              "textlessCleansCompletedBySource",
                               "textlessCleansPassedQC",
                               "textlessCleansFailedQC",
                               "rushesReceived",
@@ -559,7 +562,6 @@ export default function ReportView({
                               detail: entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count })),
                             };
                           };
-                          const completed = bySource("textlessCleansCompletedBySource");
                           const passedQC = bySource("textlessCleansPassedQC");
                           const failedQC = bySource("textlessCleansFailedQC");
                           const rushesReceived = bySource("rushesReceived");
@@ -570,7 +572,12 @@ export default function ReportView({
                           const revisioning = bySource("revisioningBySource");
                           const editing = bySource("editingBySource");
                           const upscaling = bySource("upscalingBySource");
-                          const textlessTotal = completed.total + passedQC.total + failedQC.total;
+                          // Textless/Cleans QC's headline number is what was received this month —
+                          // its own entered value, independent of the Passed/Failed/In Progress counts
+                          // nested under it — same pattern as Media Ingest's QC Hours total above.
+                          const textlessReceived = teamData["textlessCleansReceived"] ?? 0;
+                          const textlessInProgress = teamData["textlessCleansInProgress"] ?? 0;
+                          const textlessTotal = textlessReceived;
                           const rushesTotal = rushesReceived.total + rushesPassedQC.total + rushesFailedQC.total;
                           const projectFilesTotal = filesPassed.total + filesReceived.total;
                           const productionSupportTotal = revisioning.total + editing.total + upscaling.total;
@@ -583,12 +590,12 @@ export default function ReportView({
                               children: [
                                 {
                                   key: "textlessCleans",
-                                  label: "Textless/cleans",
+                                  label: "Textless/Cleans QC",
                                   total: textlessTotal,
                                   children: [
-                                    { key: "completed", label: "Completed", ...completed },
                                     { key: "passedQC", label: "Passed QC", ...passedQC },
                                     { key: "failedQC", label: "Failed QC", ...failedQC },
+                                    { key: "qcInProgress", label: "QC in Progress", total: textlessInProgress, detail: [] },
                                   ],
                                 },
                                 {

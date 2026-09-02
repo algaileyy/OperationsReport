@@ -8,6 +8,11 @@ export type FieldConfig = {
    * a unit are shown as standalone callouts rather than pie-chart slices,
    * since a unit means they aren't a comparable count with the rest. */
   unit?: string;
+  /** Renders this plain field inline within a sourceBreakdown segment's block on /input —
+   * at the start or end of that segment's items — instead of in the top fields grid. For a
+   * single aggregate number that belongs alongside a segment's by-source entries (e.g. a
+   * "Received"/"In Progress" count bookending a Passed/Failed QC breakdown). */
+  segmentSlot?: { segment: string; position: "start" | "end" };
 };
 
 /**
@@ -111,9 +116,11 @@ export const TEAMS: TeamConfig[] = [
     key: "archivingSupport",
     name: "Digital Archive & Production Support",
     accent: "aqua",
-    fields: [],
+    fields: [
+      { key: "textlessCleansReceived", label: "Received QC", segmentSlot: { segment: "Textless/Cleans QC", position: "start" } },
+      { key: "textlessCleansInProgress", label: "QC in Progress", segmentSlot: { segment: "Textless/Cleans QC", position: "end" } },
+    ],
     sourceBreakdowns: [
-      { key: "textlessCleansCompletedBySource", label: "Completed", segment: "Textless/Cleans QC" },
       { key: "textlessCleansPassedQC", label: "Passed QC", segment: "Textless/Cleans QC" },
       { key: "textlessCleansFailedQC", label: "Failed QC", segment: "Textless/Cleans QC" },
       { key: "rushesReceived", label: "Received", segment: "Rushes" },
