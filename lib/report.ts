@@ -25,17 +25,19 @@ export type MonthlyReport = {
   generalNotes: string;
 };
 
-/** Certain Media Ingest breakdowns start with specific sources pre-listed (rather than left for
- * someone to type from scratch) so the naming stays exactly consistent across months. */
-const MEDIA_INGEST_STARTER_SOURCES: Record<string, string[]> = {
+/** Certain breakdowns start with specific sources pre-listed (rather than left for someone to type
+ * from scratch) so the naming stays exactly consistent across months. Keyed by breakdown key alone
+ * since those are unique across the whole schema. */
+const STARTER_SOURCES: Record<string, string[]> = {
   artworkAndBadgesIngested: ["Show Artwork", "Movie Artwork", "Show Badges", "Movie Badges"],
+  archiveInProgress: ["AJ360", "Atheer", "Doha Debates", "Syria Now", "Sadeem"],
 };
 
 /** Appends whichever starter sources aren't already present (by name, case-insensitive) — applied
  * on every read/save, not just to a brand-new month, so a month whose data existed before a starter
  * source was introduced still picks it up instead of it only ever showing up for future months. */
 function withStarterSources(entries: SourceEntry[], breakdownKey: string): SourceEntry[] {
-  const starters = MEDIA_INGEST_STARTER_SOURCES[breakdownKey];
+  const starters = STARTER_SOURCES[breakdownKey];
   if (!starters) return entries;
   const existing = new Set(entries.map((e) => e.source.trim().toLowerCase()));
   const missing = starters.filter((s) => !existing.has(s.toLowerCase()));
@@ -52,7 +54,7 @@ export function emptyReport(): MonthlyReport {
     notes[t.key] = "";
     sourceBreakdowns[t.key] = {};
     for (const sb of t.sourceBreakdowns ?? []) {
-      sourceBreakdowns[t.key][sb.key] = t.key === "mediaIngest" ? withStarterSources([], sb.key) : [];
+      sourceBreakdowns[t.key][sb.key] = withStarterSources([], sb.key);
     }
   }
   return {
@@ -108,8 +110,7 @@ export function normalizeReport(raw: unknown): MonthlyReport {
             };
           })
         : [];
-      sourceBreakdowns[team.key][sb.key] =
-        team.key === "mediaIngest" ? withStarterSources(entries, sb.key) : entries;
+      sourceBreakdowns[team.key][sb.key] = withStarterSources(entries, sb.key);
     }
   }
 

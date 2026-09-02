@@ -111,12 +111,7 @@ export const TEAMS: TeamConfig[] = [
     key: "archivingSupport",
     name: "Digital Archive & Production Support",
     accent: "aqua",
-    fields: [
-      { key: "revisioning", label: "Re-versioning", hideWhenZero: true },
-      { key: "editing", label: "Editing", hideWhenZero: true },
-      { key: "upscaling", label: "Upscaling", hideWhenZero: true },
-      { key: "productionSupportActivities", label: "Production Support Activities" },
-    ],
+    fields: [],
     sourceBreakdowns: [
       { key: "textlessCleansCompletedBySource", label: "Completed" },
       { key: "textlessCleansPassedQC", label: "Passed QC" },
@@ -126,6 +121,9 @@ export const TEAMS: TeamConfig[] = [
       { key: "rushesFailedQC", label: "Failed QC" },
       { key: "projectFilesPassed", label: "Passed" },
       { key: "projectFilesReceived", label: "Received" },
+      { key: "revisioningBySource", label: "Re-versioning" },
+      { key: "editingBySource", label: "Editing" },
+      { key: "upscalingBySource", label: "Upscaling" },
       { key: "archived", label: "Archived", unit: "TB" },
       { key: "archiveInProgress", label: "Archive In Progress", unit: "TB" },
       { key: "storageFreed", label: "Storage Freed", unit: "TB" },

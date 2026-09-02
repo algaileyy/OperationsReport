@@ -415,6 +415,9 @@ export default function ReportView({
                               "rushesFailedQC",
                               "projectFilesPassed",
                               "projectFilesReceived",
+                              "revisioningBySource",
+                              "editingBySource",
+                              "upscalingBySource",
                             ].includes(sb.key);
                           }
                           return true;
@@ -506,9 +509,13 @@ export default function ReportView({
                           const rushesFailedQC = bySource("rushesFailedQC");
                           const filesPassed = bySource("projectFilesPassed");
                           const filesReceived = bySource("projectFilesReceived");
+                          const revisioning = bySource("revisioningBySource");
+                          const editing = bySource("editingBySource");
+                          const upscaling = bySource("upscalingBySource");
                           const textlessTotal = completed.total + passedQC.total + failedQC.total;
                           const rushesTotal = rushesReceived.total + rushesPassedQC.total + rushesFailedQC.total;
                           const projectFilesTotal = filesPassed.total + filesReceived.total;
+                          const productionSupportTotal = revisioning.total + editing.total + upscaling.total;
 
                           const altQC = rowIndex++ % 2 === 1;
                           const altTextless = rowIndex++ % 2 === 1;
@@ -522,8 +529,13 @@ export default function ReportView({
                           const altFiles = rowIndex++ % 2 === 1;
                           const altFilesPassed = rowIndex++ % 2 === 1;
                           const altFilesReceived = rowIndex++ % 2 === 1;
+                          const altSupport = rowIndex++ % 2 === 1;
+                          const altRevisioning = rowIndex++ % 2 === 1;
+                          const altEditing = rowIndex++ % 2 === 1;
+                          const altUpscaling = rowIndex++ % 2 === 1;
 
                           return (
+                            <>
                             <GroupRow
                               key="qualityControlCompleted"
                               label="Quality Control Completed"
@@ -635,6 +647,43 @@ export default function ReportView({
                                 />
                               </GroupRow>
                             </GroupRow>
+                            <GroupRow
+                              key="productionSupportActivities"
+                              label="Production Support Activities"
+                              total={productionSupportTotal}
+                              detail={[]}
+                              altRow={altSupport}
+                              unit={displayUnit()}
+                            >
+                              <GroupRow
+                                key="revisioningBySource"
+                                label="Re-versioning"
+                                total={revisioning.total}
+                                detail={revisioning.detail}
+                                altRow={altRevisioning}
+                                unit={displayUnit()}
+                                level={1}
+                              />
+                              <GroupRow
+                                key="editingBySource"
+                                label="Editing"
+                                total={editing.total}
+                                detail={editing.detail}
+                                altRow={altEditing}
+                                unit={displayUnit()}
+                                level={1}
+                              />
+                              <GroupRow
+                                key="upscalingBySource"
+                                label="Upscaling"
+                                total={upscaling.total}
+                                detail={upscaling.detail}
+                                altRow={altUpscaling}
+                                unit={displayUnit()}
+                                level={1}
+                              />
+                            </GroupRow>
+                            </>
                           );
                         })()}
                     </tbody>
