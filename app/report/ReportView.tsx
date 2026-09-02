@@ -410,6 +410,9 @@ export default function ReportView({
                               "textlessCleansCompletedBySource",
                               "textlessCleansPassedQC",
                               "textlessCleansFailedQC",
+                              "rushesReceived",
+                              "rushesPassedQC",
+                              "rushesFailedQC",
                               "projectFilesPassed",
                               "projectFilesReceived",
                             ].includes(sb.key);
@@ -498,9 +501,13 @@ export default function ReportView({
                           const completed = bySource("textlessCleansCompletedBySource");
                           const passedQC = bySource("textlessCleansPassedQC");
                           const failedQC = bySource("textlessCleansFailedQC");
+                          const rushesReceived = bySource("rushesReceived");
+                          const rushesPassedQC = bySource("rushesPassedQC");
+                          const rushesFailedQC = bySource("rushesFailedQC");
                           const filesPassed = bySource("projectFilesPassed");
                           const filesReceived = bySource("projectFilesReceived");
                           const textlessTotal = completed.total + passedQC.total + failedQC.total;
+                          const rushesTotal = rushesReceived.total + rushesPassedQC.total + rushesFailedQC.total;
                           const projectFilesTotal = filesPassed.total + filesReceived.total;
 
                           const altQC = rowIndex++ % 2 === 1;
@@ -508,6 +515,10 @@ export default function ReportView({
                           const altCompleted = rowIndex++ % 2 === 1;
                           const altPassedQC = rowIndex++ % 2 === 1;
                           const altFailedQC = rowIndex++ % 2 === 1;
+                          const altRushes = rowIndex++ % 2 === 1;
+                          const altRushesReceived = rowIndex++ % 2 === 1;
+                          const altRushesPassedQC = rowIndex++ % 2 === 1;
+                          const altRushesFailedQC = rowIndex++ % 2 === 1;
                           const altFiles = rowIndex++ % 2 === 1;
                           const altFilesPassed = rowIndex++ % 2 === 1;
                           const altFilesReceived = rowIndex++ % 2 === 1;
@@ -516,7 +527,7 @@ export default function ReportView({
                             <GroupRow
                               key="qualityControlCompleted"
                               label="Quality Control Completed"
-                              total={textlessTotal + projectFilesTotal}
+                              total={textlessTotal + rushesTotal + projectFilesTotal}
                               detail={[]}
                               altRow={altQC}
                               unit={displayUnit()}
@@ -554,6 +565,43 @@ export default function ReportView({
                                   total={failedQC.total}
                                   detail={failedQC.detail}
                                   altRow={altFailedQC}
+                                  unit={displayUnit()}
+                                  level={2}
+                                />
+                              </GroupRow>
+                              <GroupRow
+                                key="rushes"
+                                label="Rushes"
+                                total={rushesTotal}
+                                detail={[]}
+                                altRow={altRushes}
+                                unit={displayUnit()}
+                                level={1}
+                              >
+                                <GroupRow
+                                  key="rushesReceived"
+                                  label="Received"
+                                  total={rushesReceived.total}
+                                  detail={rushesReceived.detail}
+                                  altRow={altRushesReceived}
+                                  unit={displayUnit()}
+                                  level={2}
+                                />
+                                <GroupRow
+                                  key="rushesPassedQC"
+                                  label="Passed QC"
+                                  total={rushesPassedQC.total}
+                                  detail={rushesPassedQC.detail}
+                                  altRow={altRushesPassedQC}
+                                  unit={displayUnit()}
+                                  level={2}
+                                />
+                                <GroupRow
+                                  key="rushesFailedQC"
+                                  label="Failed QC"
+                                  total={rushesFailedQC.total}
+                                  detail={rushesFailedQC.detail}
+                                  altRow={altRushesFailedQC}
                                   unit={displayUnit()}
                                   level={2}
                                 />
