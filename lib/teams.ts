@@ -71,6 +71,8 @@ export const TEAMS: TeamConfig[] = [
       { key: "ingestedArchiveContent", label: "Archive Content Ingested" },
       { key: "catchUpContentSize", label: "Catch-up Content Size", unit: "TB" },
       { key: "archiveContentSize", label: "Archive Content Size", unit: "TB" },
+      { key: "artwork", label: "Artwork" },
+      { key: "thumbnails", label: "Thumbnails" },
     ],
   },
   {

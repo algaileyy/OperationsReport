@@ -25,23 +25,16 @@ export type MonthlyReport = {
   generalNotes: string;
 };
 
-/** Recurring Media Ingest categories that aren't tied to one bureau/channel — seeded as starter
- * rows (rather than left for someone to type from scratch each month) so the naming stays exactly
- * consistent across months for the by-source totals to merge correctly. */
-const MEDIA_INGEST_STARTER_SOURCES = ["Artwork", "Badging", "Thumbnails"];
-const MEDIA_INGEST_SEEDED_BREAKDOWNS = new Set([
-  "catchUpContentReceived",
-  "archiveContentReceived",
-  "ingestedCatchUpContent",
-  "ingestedArchiveContent",
-]);
+/** The Artwork breakdown starts with these two sources pre-listed (rather than left for someone to
+ * type from scratch) so the naming stays exactly consistent across months. */
+const ARTWORK_STARTER_SOURCES = ["Artwork", "Badging"];
 
 /** Appends whichever starter sources aren't already present (by name, case-insensitive) — applied
  * on every read/save, not just to a brand-new month, so a month whose data existed before a starter
  * source was introduced still picks it up instead of it only ever showing up for future months. */
 function withStarterSources(entries: SourceEntry[], breakdownKey: string): SourceEntry[] {
   const existing = new Set(entries.map((e) => e.source.trim().toLowerCase()));
-  const missing = MEDIA_INGEST_STARTER_SOURCES.filter((s) => !existing.has(s.toLowerCase()));
+  const missing = ARTWORK_STARTER_SOURCES.filter((s) => !existing.has(s.toLowerCase()));
   const seeded = missing.map((source, i) => ({ id: `${breakdownKey}-seed-${entries.length + i}`, source, count: 0 }));
   return [...entries, ...seeded];
 }
@@ -56,7 +49,7 @@ export function emptyReport(): MonthlyReport {
     sourceBreakdowns[t.key] = {};
     for (const sb of t.sourceBreakdowns ?? []) {
       sourceBreakdowns[t.key][sb.key] =
-        t.key === "mediaIngest" && MEDIA_INGEST_SEEDED_BREAKDOWNS.has(sb.key) ? withStarterSources([], sb.key) : [];
+        t.key === "mediaIngest" && sb.key === "artwork" ? withStarterSources([], sb.key) : [];
     }
   }
   return {
@@ -113,9 +106,7 @@ export function normalizeReport(raw: unknown): MonthlyReport {
           })
         : [];
       sourceBreakdowns[team.key][sb.key] =
-        team.key === "mediaIngest" && MEDIA_INGEST_SEEDED_BREAKDOWNS.has(sb.key)
-          ? withStarterSources(entries, sb.key)
-          : entries;
+        team.key === "mediaIngest" && sb.key === "artwork" ? withStarterSources(entries, sb.key) : entries;
     }
   }
 
