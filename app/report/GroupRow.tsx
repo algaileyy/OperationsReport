@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { formatFieldValue } from "@/lib/format";
 
 const TEXT_BRIGHT = "#ffffff";
@@ -14,6 +15,76 @@ type DetailItem = { label: string; value: number };
  * small fixed lookup rather than a computed string. Only 0-2 are used (three levels deep, max). */
 const LABEL_PADDING = ["px-3 py-2 text-sm", "py-2 pl-9 pr-3 text-sm", "py-2 pl-16 pr-3 text-sm"];
 const DETAIL_PADDING = ["py-1.5 pl-9 pr-3 text-sm", "py-1.5 pl-16 pr-3 text-sm", "py-1.5 pl-24 pr-3 text-sm"];
+
+/**
+ * Renders its tooltip through a portal onto document.body, positioned via getBoundingClientRect
+ * — the row it lives in sits inside the report table's overflow-x-auto wrapper, and setting
+ * overflow-x forces overflow-y to clip too, so a plain CSS absolute tooltip gets cut off by that
+ * ancestor whenever it's tall enough (a long explanation) or the icon is near the wrapper's edge.
+ * Fixed-positioning it outside the DOM tree it's clipped by sidesteps that entirely.
+ */
+function InfoIcon({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const iconRef = useRef<HTMLSpanElement>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open || !iconRef.current) return;
+    const iconRect = iconRef.current.getBoundingClientRect();
+    const tipRect = tipRef.current?.getBoundingClientRect();
+    const tipWidth = tipRect?.width ?? 256;
+    const tipHeight = tipRect?.height ?? 0;
+    const gap = 8;
+    const openBelow = iconRect.top - tipHeight - gap < 8;
+    const top = openBelow ? iconRect.bottom + gap : iconRect.top - tipHeight - gap;
+    const left = Math.min(Math.max(iconRect.left, 8), window.innerWidth - tipWidth - 8);
+    setPos({ top, left });
+  }, [open]);
+
+  return (
+    <span
+      ref={iconRef}
+      className="relative inline-flex shrink-0"
+      onClick={(e) => e.stopPropagation()}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#ffffff"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="h-3.5 w-3.5 cursor-help opacity-80 hover:opacity-100"
+        aria-label="More information"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="11" x2="12" y2="16" />
+        <circle cx="12" cy="7.5" r="0.5" fill="#ffffff" stroke="none" />
+      </svg>
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={tipRef}
+            className="pointer-events-none fixed z-50 w-64 rounded-md px-3 py-2 text-xs font-normal normal-case shadow-lg"
+            style={{
+              background: "#0b1d27",
+              color: "#ffffff",
+              top: pos?.top ?? -9999,
+              left: pos?.left ?? -9999,
+              visibility: pos ? "visible" : "hidden",
+            }}
+          >
+            {text}
+          </div>,
+          document.body
+        )}
+    </span>
+  );
+}
 
 export default function GroupRow({
   label,
@@ -62,33 +133,7 @@ export default function GroupRow({
               {expandable ? (isOpen ? "▾" : "▸") : ""}
             </span>
             {label}
-            {infoText && (
-              <span
-                className="group relative inline-flex shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#ffffff"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-3.5 w-3.5 cursor-help opacity-80 hover:opacity-100"
-                  aria-label="More information"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="11" x2="12" y2="16" />
-                  <circle cx="12" cy="7.5" r="0.5" fill="#ffffff" stroke="none" />
-                </svg>
-                <span
-                  className="pointer-events-none absolute bottom-full left-0 z-20 mb-2 w-64 rounded-md px-3 py-2 text-xs font-normal normal-case opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
-                  style={{ background: "#0b1d27", color: "#ffffff" }}
-                >
-                  {infoText}
-                </span>
-              </span>
-            )}
+            {infoText && <InfoIcon text={infoText} />}
           </span>
         </td>
         <td className="px-3 py-2 text-sm font-bold" style={{ color: TEXT_BRIGHT }}>
