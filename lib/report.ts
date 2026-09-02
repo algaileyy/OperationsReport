@@ -25,6 +25,17 @@ export type MonthlyReport = {
   generalNotes: string;
 };
 
+/** Recurring Media Ingest categories that aren't tied to one bureau/channel — seeded as starter
+ * rows (rather than left for someone to type from scratch each month) so the naming stays exactly
+ * consistent across months for the by-source totals to merge correctly. */
+const MEDIA_INGEST_STARTER_SOURCES = ["Artwork & Badging", "Thumbnails"];
+const MEDIA_INGEST_SEEDED_BREAKDOWNS = new Set([
+  "catchUpContentReceived",
+  "archiveContentReceived",
+  "ingestedCatchUpContent",
+  "ingestedArchiveContent",
+]);
+
 export function emptyReport(): MonthlyReport {
   const teams: Record<string, TeamData> = {};
   const notes: Record<string, string> = {};
@@ -34,7 +45,10 @@ export function emptyReport(): MonthlyReport {
     notes[t.key] = "";
     sourceBreakdowns[t.key] = {};
     for (const sb of t.sourceBreakdowns ?? []) {
-      sourceBreakdowns[t.key][sb.key] = [];
+      sourceBreakdowns[t.key][sb.key] =
+        t.key === "mediaIngest" && MEDIA_INGEST_SEEDED_BREAKDOWNS.has(sb.key)
+          ? MEDIA_INGEST_STARTER_SOURCES.map((source, i) => ({ id: `${sb.key}-seed-${i}`, source, count: 0 }))
+          : [];
     }
   }
   return {
