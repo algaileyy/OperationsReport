@@ -149,10 +149,6 @@ export default function InputClient({
     }));
   }
 
-  function setQcHoursTotal(value: string) {
-    setData((d) => ({ ...d, qcHoursTotal: value === "" ? 0 : Number(value) }));
-  }
-
   function setGeneralNotes(value: string) {
     setData((d) => ({ ...d, generalNotes: value }));
   }
@@ -399,21 +395,6 @@ export default function InputClient({
               </button>
             </div>
             <div className="flex flex-col gap-4">
-              <label className="flex flex-col gap-1">
-                <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                  QC Hours Total
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  inputMode="numeric"
-                  value={data.qcHoursTotal ?? ""}
-                  onChange={(e) => setQcHoursTotal(e.target.value)}
-                  placeholder="Total hours spent on QC this month, across all teams"
-                  className="w-48 rounded-md border px-3 py-2 text-sm"
-                  style={inputStyle}
-                />
-              </label>
               <label className="flex flex-col gap-1">
                 <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                   Main Achievements

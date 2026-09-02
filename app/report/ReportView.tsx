@@ -117,6 +117,13 @@ function mediaDeskActivityTotal(report: MonthlyReport): number {
   return group.sumKeys.reduce((s, k) => s + (data[k] ?? 0), 0);
 }
 
+/** QC hours are only tracked (in hours) by Media Ingest — Digital Archive's QC is counted in assets,
+ * not hours — so the "QC Hours Total" glance card reads that one field instead of a separately
+ * entered total that would just duplicate it. */
+function qcHoursTotal(report: MonthlyReport): number {
+  return report.teams["mediaIngest"]?.["qualityControlCompleted"] ?? 0;
+}
+
 /** Media Ingest's "Total Assets Processed (In GCP)" is derived, not entered — one source's total is
  * whatever it received across both ingest breakdowns, so tracking it separately would just be the same
  * numbers re-entered by hand. */
@@ -235,7 +242,7 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
           unit="TB"
           caption="Digital Archive & Production Support"
         />
-        <GlanceCard label="QC Hours Total" value={report.qcHoursTotal ?? 0} unit=" hrs" caption="Reported this month" />
+        <GlanceCard label="QC Hours Total" value={qcHoursTotal(report)} unit=" hrs" caption="Reported this month" />
         <GlanceCard label="Assets Circulation" value={mediaDeskActivityTotal(report)} caption="Media Desk" />
       </div>
       {hasHighlights && (
