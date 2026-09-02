@@ -135,11 +135,13 @@ function mediaDeskActivityTotal(report: MonthlyReport): number {
   return group.sumKeys.reduce((s, k) => s + (data[k] ?? 0), 0);
 }
 
-/** QC hours are only tracked (in hours) by Media Ingest — Digital Archive's QC is counted in assets,
- * not hours — so the "QC Hours Total" glance card reads that one field instead of a separately
- * entered total that would just duplicate it. */
+/** QC hours are tracked by two teams: Media Ingest's own Quality Control Completed field, and
+ * Digital Archive & Production Support's Hours of QC (under Textless/Cleans QC) — summed here
+ * rather than each team's own entered total, so the two nest into one glance-card figure. */
 function qcHoursTotal(report: MonthlyReport): number {
-  return report.teams["mediaIngest"]?.["qualityControlCompleted"] ?? 0;
+  const ingest = report.teams["mediaIngest"]?.["qualityControlCompleted"] ?? 0;
+  const archive = report.teams["archivingSupport"]?.["textlessCleansHours"] ?? 0;
+  return ingest + archive;
 }
 
 function SectionHeading({ n, title }: { n?: number; title: string }) {
@@ -256,7 +258,13 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
           caption="Digital Archive & Production Support"
           infoText="Completed production media — masters, assets, episodes, and project files — validated and moved into long-term storage (primarily DIVA) once a project wraps."
         />
-        <GlanceCard label="QC Hours Total" value={qcHoursTotal(report)} unit=" hrs" caption="Reported this month" />
+        <GlanceCard
+          label="QC Hours Total"
+          value={qcHoursTotal(report)}
+          unit=" hrs"
+          caption="Reported this month"
+          infoText="Combines Media Ingest's Quality Control Completed hours with Digital Archive & Production Support's Hours of QC (Textless/Cleans QC)."
+        />
         <GlanceCard
           label="Assets Circulation"
           value={mediaDeskActivityTotal(report)}
