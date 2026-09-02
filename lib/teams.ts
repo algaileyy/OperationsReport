@@ -63,8 +63,12 @@ export const TEAMS: TeamConfig[] = [
     sourceBreakdowns: [
       { key: "catchUpContentReceived", label: "Catch-up Content Received" },
       { key: "archiveContentReceived", label: "Archive Content Received" },
-      { key: "ingestedCatchUpContent", label: "Ingested Catch-up Content" },
-      { key: "ingestedArchiveContent", label: "Ingested Archive Content" },
+      { key: "catchUpContentFailed", label: "Catch-up Content Failed" },
+      { key: "archiveContentFailed", label: "Archive Content Failed" },
+      { key: "ingestedCatchUpContent", label: "Catch-up Content Ingested" },
+      { key: "ingestedArchiveContent", label: "Archive Content Ingested" },
+      { key: "catchUpContentSize", label: "Catch-up Content Size", unit: "TB" },
+      { key: "archiveContentSize", label: "Archive Content Size", unit: "TB" },
     ],
   },
   {
