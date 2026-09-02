@@ -25,6 +25,9 @@ export default function InteractivePie({
   calloutFields?: Callout[];
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  // A hovered callout has no slice of its own to light up, but still takes over the center label —
+  // mutually exclusive with `hover` so only one thing drives the center at a time.
+  const [hoverCallout, setHoverCallout] = useState<number | null>(null);
   const sum = fields.reduce((s, f) => s + f.value, 0);
   const r = 36;
   const strokeWidth = 14;
@@ -52,14 +55,44 @@ export default function InteractivePie({
   });
 
   const active = hover != null ? segments[hover] : null;
-  const calloutLegend = calloutFields.map((c) => (
-    <div key={c.label} className="flex items-center gap-1.5 rounded px-1 py-0.5">
+  const activeCallout = hoverCallout != null ? calloutFields[hoverCallout] : null;
+
+  const centerLabel = activeCallout
+    ? activeCallout.label.toUpperCase()
+    : active
+      ? `${active.pct}%`
+      : "Total";
+  const centerValue = activeCallout ? formatFieldValue(activeCallout.value, activeCallout.unit) : formatNumber(active ? active.value : sum);
+  const centerColor = activeCallout ? "#5b6472" : active ? colors[active.i] : "#0b1d27";
+
+  const calloutLegend = calloutFields.map((c, i) => (
+    <div
+      key={c.label}
+      className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors"
+      style={{ background: hoverCallout === i ? "rgba(0,0,0,0.05)" : "transparent", cursor: "pointer" }}
+      onMouseEnter={() => {
+        setHoverCallout(i);
+        setHover(null);
+      }}
+      onMouseLeave={() => setHoverCallout((h) => (h === i ? null : h))}
+    >
       <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: "#8b93a1" }} />
       <span>
         {c.label}: <strong>{formatFieldValue(c.value, c.unit)}</strong>
       </span>
     </div>
   ));
+
+  const centerOverlay = (hoverCallout != null || sum > 0) && (
+    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+      <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: "#8b93a1" }}>
+        {centerLabel}
+      </span>
+      <span className="stat-value text-sm font-extrabold leading-tight" style={{ color: centerColor }}>
+        {centerValue}
+      </span>
+    </div>
+  );
 
   if (sum <= 0) {
     if (calloutFields.length === 0) {
@@ -74,7 +107,9 @@ export default function InteractivePie({
     }
     return (
       <div className="flex items-center gap-4">
-        <div className="h-28 w-28 shrink-0 rounded-full print:h-20 print:w-20" style={{ border: "1px dashed #c3c9d1" }} />
+        <div className="relative h-28 w-28 shrink-0 print:h-20 print:w-20 rounded-full" style={{ border: "1px dashed #c3c9d1" }}>
+          {centerOverlay}
+        </div>
         <div className="flex flex-col gap-1 text-xs" style={{ color: "#33454f" }}>
           {calloutLegend}
         </div>
@@ -99,27 +134,20 @@ export default function InteractivePie({
               strokeDashoffset={s.offset}
               transform="rotate(-90 50 50)"
               style={{
-                opacity: hover == null || hover === s.i ? 1 : 0.35,
+                opacity: hoverCallout != null || (hover != null && hover !== s.i) ? 0.35 : 1,
                 transition: "stroke-width 150ms ease, opacity 150ms ease",
                 cursor: "pointer",
               }}
-              onMouseEnter={() => setHover(s.i)}
+              onMouseEnter={() => {
+                setHover(s.i);
+                setHoverCallout(null);
+              }}
               onMouseLeave={() => setHover((h) => (h === s.i ? null : h))}
             />
           ))}
         </svg>
-        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: "#8b93a1" }}>
-            {active ? `${active.pct}%` : "Total"}
-          </span>
-          <span
-            className="stat-value text-sm font-extrabold leading-tight"
-            style={{ color: active ? colors[active.i] : "#0b1d27" }}
-          >
-            {formatNumber(active ? active.value : sum)}
-          </span>
-        </div>
-        {active && (
+        {centerOverlay}
+        {active && hoverCallout == null && (
           <div
             className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md px-2 py-1 text-[11px] font-semibold text-white shadow-lg print:hidden"
             style={{
@@ -140,7 +168,10 @@ export default function InteractivePie({
             key={s.label + s.i}
             className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors"
             style={{ background: hover === s.i ? "rgba(0,0,0,0.05)" : "transparent", cursor: "pointer" }}
-            onMouseEnter={() => setHover(s.i)}
+            onMouseEnter={() => {
+              setHover(s.i);
+              setHoverCallout(null);
+            }}
             onMouseLeave={() => setHover((h) => (h === s.i ? null : h))}
           >
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors[s.i] }} />
