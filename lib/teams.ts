@@ -43,9 +43,6 @@ export type SourceBreakdownConfig = {
   label: string;
   /** e.g. "TB" — when set, the total and its entries are formatted with this unit. */
   unit?: string;
-  /** Renders this breakdown's callout (only applies to unit-bearing ones) as a bold accent-colored
-   * badge instead of plain text, for the figures worth calling out at a glance. */
-  highlight?: boolean;
 };
 
 export type TeamConfig = {
@@ -127,9 +124,9 @@ export const TEAMS: TeamConfig[] = [
       { key: "revisioningBySource", label: "Re-versioning" },
       { key: "editingBySource", label: "Editing" },
       { key: "upscalingBySource", label: "Upscaling" },
-      { key: "archived", label: "Archived", unit: "TB", highlight: true },
+      { key: "archived", label: "Archived", unit: "TB" },
       { key: "archiveInProgress", label: "Archive In Progress", unit: "TB" },
-      { key: "storageFreed", label: "Storage Freed", unit: "TB", highlight: true },
+      { key: "storageFreed", label: "Storage Freed", unit: "TB" },
     ],
   },
 ];
