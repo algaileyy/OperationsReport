@@ -17,12 +17,17 @@ export default function InteractivePie({
   fields,
   colors,
   calloutFields = [],
+  defaultCenter,
 }: {
   fields: Slice[];
   colors: string[];
   /** Unit-bearing figures (e.g. TB) that can't share the donut with plain counts — shown as extra
    * legend rows instead, with a neutral marker since they don't correspond to a slice. */
   calloutFields?: Callout[];
+  /** Overrides the default (nothing hovered) center label/value, in place of the usual "Total" sum
+   * of the pie's own unitless slices — e.g. Digital Archive shows its total TB there instead, since
+   * that's the figure that actually matters for that team. */
+  defaultCenter?: { label: string; value: number; unit?: string };
 }) {
   const [hover, setHover] = useState<number | null>(null);
   // A hovered callout has no slice of its own to light up, but still takes over the center label —
@@ -61,8 +66,16 @@ export default function InteractivePie({
     ? activeCallout.label.toUpperCase()
     : active
       ? `${active.pct}%`
-      : "Total";
-  const centerValue = activeCallout ? formatFieldValue(activeCallout.value, activeCallout.unit) : formatNumber(active ? active.value : sum);
+      : defaultCenter
+        ? defaultCenter.label.toUpperCase()
+        : "Total";
+  const centerValue = activeCallout
+    ? formatFieldValue(activeCallout.value, activeCallout.unit)
+    : active
+      ? formatNumber(active.value)
+      : defaultCenter
+        ? formatFieldValue(defaultCenter.value, defaultCenter.unit)
+        : formatNumber(sum);
   const centerColor = activeCallout ? "#5b6472" : active ? colors[active.i] : "#0b1d27";
 
   const calloutLegend = calloutFields.map((c, i) => (
@@ -83,7 +96,7 @@ export default function InteractivePie({
     </div>
   ));
 
-  const centerOverlay = (hoverCallout != null || sum > 0) && (
+  const centerOverlay = (hoverCallout != null || sum > 0 || defaultCenter != null) && (
     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
       <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: "#8b93a1" }}>
         {centerLabel}

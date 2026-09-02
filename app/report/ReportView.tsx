@@ -289,6 +289,12 @@ function TeamPie({
   ];
 
   const colors = shadeSteps(accent, pieFields.length);
+  // Digital Archive's headline number is how much it archived, not a count of QC/support actions —
+  // so its donut defaults to total TB instead of the usual sum of unitless slices.
+  const defaultCenter =
+    team.key === "archivingSupport" && calloutFields.length > 0
+      ? { label: "Total TB", value: calloutFields.reduce((s, f) => s + f.value, 0), unit: calloutFields[0].unit }
+      : undefined;
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-xl print:break-inside-avoid print:rounded-lg print:p-3 print:shadow-none">
@@ -298,7 +304,7 @@ function TeamPie({
         </p>
       </div>
       {(pieFields.length > 0 || calloutFields.length > 0) && (
-        <InteractivePie fields={pieFields} colors={colors} calloutFields={calloutFields} />
+        <InteractivePie fields={pieFields} colors={colors} calloutFields={calloutFields} defaultCenter={defaultCenter} />
       )}
     </div>
   );
