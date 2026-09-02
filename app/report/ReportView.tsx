@@ -419,6 +419,11 @@ export default function ReportView({
                               detail={detail}
                               altRow={alt}
                               unit={displayUnit(sb.unit)}
+                              infoText={
+                                sb.key === "badgesIngested"
+                                  ? "Badges get burnt onto show and movie artwork using a tool operated by Media Ingest team."
+                                  : undefined
+                              }
                             />
                           );
                         })}
