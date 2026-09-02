@@ -108,10 +108,6 @@ function totalArchived(report: MonthlyReport): number {
   return entries.reduce((s, e) => s + e.count, 0);
 }
 
-function projectsArchivedCount(report: MonthlyReport): number {
-  return report.teams["mediaManagement"]?.["projectsArchived"] ?? 0;
-}
-
 /** The "Assets Circulation" glance card shows Media Desk's total activity, not a single field. */
 function mediaDeskActivityTotal(report: MonthlyReport): number {
   const group = getTeam("mediaManagement")?.groups?.[0];
@@ -198,16 +194,11 @@ function GlanceCard({
   value,
   unit,
   caption,
-  secondaryLabel,
-  secondaryValue,
 }: {
   label: string;
   value: number;
   unit?: string;
   caption: string;
-  /** An optional second, smaller stat shown in the same card — for a related number that isn't the same unit and so can't just be summed in. */
-  secondaryLabel?: string;
-  secondaryValue?: number;
 }) {
   return (
     <div className="rounded-lg border-t-2 p-4" style={{ background: "rgba(0,0,0,0.15)", borderColor: ACCENT_CYAN }}>
@@ -220,11 +211,6 @@ function GlanceCard({
       <p className="text-xs" style={{ color: TEXT_DIM }}>
         {caption}
       </p>
-      {secondaryLabel != null && (
-        <p className="mt-2 border-t pt-2 text-sm" style={{ borderColor: PANEL_BORDER, color: TEXT_DIM }}>
-          {secondaryLabel}: <strong style={{ color: TEXT_BRIGHT }}>{formatNumber(secondaryValue)}</strong>
-        </p>
-      )}
     </div>
   );
 }
@@ -247,8 +233,6 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
           value={totalArchived(report)}
           unit="TB"
           caption="Digital Archive & Production Support"
-          secondaryLabel="Projects Archived"
-          secondaryValue={projectsArchivedCount(report)}
         />
         <GlanceCard label="QC Hours Total" value={report.qcHoursTotal ?? 0} unit=" hrs" caption="Reported this month" />
         <GlanceCard label="Assets Circulation" value={mediaDeskActivityTotal(report)} caption="Media Desk" />
