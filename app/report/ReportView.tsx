@@ -254,6 +254,7 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
           value={totalArchived(report)}
           unit="TB"
           caption="Digital Archive & Production Support"
+          infoText="Completed production media — masters, assets, episodes, and project files — validated and moved into long-term storage (primarily DIVA) once a project wraps."
         />
         <GlanceCard label="QC Hours Total" value={qcHoursTotal(report)} unit=" hrs" caption="Reported this month" />
         <GlanceCard label="Assets Circulation" value={mediaDeskActivityTotal(report)} caption="Media Desk" />
