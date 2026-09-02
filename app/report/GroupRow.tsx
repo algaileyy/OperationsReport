@@ -17,6 +17,7 @@ export default function GroupRow({
   altRow,
   unit,
   indent = false,
+  infoText,
   children,
 }: {
   label: string;
@@ -27,6 +28,8 @@ export default function GroupRow({
   /** Renders the header and detail rows one level further right — for a GroupRow nested inside
    * another GroupRow's expanded state. */
   indent?: boolean;
+  /** Shows a white info icon next to the label with this text in a hover tooltip. */
+  infoText?: string;
   /** Extra rows (typically nested GroupRows) shown after `detail` while this row is open. */
   children?: ReactNode;
 }) {
@@ -47,6 +50,33 @@ export default function GroupRow({
               {open ? "▾" : "▸"}
             </span>
             {label}
+            {infoText && (
+              <span
+                className="group relative inline-flex shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-3.5 w-3.5 cursor-help opacity-80 hover:opacity-100"
+                  aria-label="More information"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="11" x2="12" y2="16" />
+                  <circle cx="12" cy="7.5" r="0.5" fill="#ffffff" stroke="none" />
+                </svg>
+                <span
+                  className="pointer-events-none absolute bottom-full left-0 z-20 mb-2 w-64 rounded-md px-3 py-2 text-xs font-normal normal-case opacity-0 shadow-lg transition-opacity group-hover:opacity-100"
+                  style={{ background: "#0b1d27", color: "#ffffff" }}
+                >
+                  {infoText}
+                </span>
+              </span>
+            )}
           </span>
         </td>
         <td className="px-3 py-2 text-sm font-bold" style={{ color: TEXT_BRIGHT }}>
