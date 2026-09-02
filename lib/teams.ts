@@ -38,6 +38,11 @@ export type SourceBreakdownConfig = {
   label: string;
   /** e.g. "TB" — when set, the total and its entries are formatted with this unit. */
   unit?: string;
+  /** Groups consecutive breakdowns under a shared heading on /input — several segments
+   * reuse labels like "Passed QC" or "Received", so this makes clear which segment a
+   * given source belongs to before its numbers are entered. Mirrors the grouping already
+   * shown on /report (see ReportView's archivingSupport tree). */
+  segment?: string;
 };
 
 export type TeamConfig = {
@@ -108,20 +113,20 @@ export const TEAMS: TeamConfig[] = [
     accent: "aqua",
     fields: [],
     sourceBreakdowns: [
-      { key: "textlessCleansCompletedBySource", label: "Completed" },
-      { key: "textlessCleansPassedQC", label: "Passed QC" },
-      { key: "textlessCleansFailedQC", label: "Failed QC" },
-      { key: "rushesReceived", label: "Received" },
-      { key: "rushesPassedQC", label: "Passed QC" },
-      { key: "rushesFailedQC", label: "Failed QC" },
-      { key: "projectFilesPassed", label: "Passed" },
-      { key: "projectFilesReceived", label: "Received" },
-      { key: "revisioningBySource", label: "Re-versioning" },
-      { key: "editingBySource", label: "Editing" },
-      { key: "upscalingBySource", label: "Upscaling" },
-      { key: "archived", label: "Archived", unit: "TB" },
-      { key: "archiveInProgress", label: "Archive In Progress", unit: "TB" },
-      { key: "storageFreed", label: "Storage Freed", unit: "TB" },
+      { key: "textlessCleansCompletedBySource", label: "Completed", segment: "Textless/Cleans QC" },
+      { key: "textlessCleansPassedQC", label: "Passed QC", segment: "Textless/Cleans QC" },
+      { key: "textlessCleansFailedQC", label: "Failed QC", segment: "Textless/Cleans QC" },
+      { key: "rushesReceived", label: "Received", segment: "Rushes" },
+      { key: "rushesPassedQC", label: "Passed QC", segment: "Rushes" },
+      { key: "rushesFailedQC", label: "Failed QC", segment: "Rushes" },
+      { key: "projectFilesPassed", label: "Passed", segment: "Project Files" },
+      { key: "projectFilesReceived", label: "Received", segment: "Project Files" },
+      { key: "revisioningBySource", label: "Re-versioning", segment: "Production Support Activities" },
+      { key: "editingBySource", label: "Editing", segment: "Production Support Activities" },
+      { key: "upscalingBySource", label: "Upscaling", segment: "Production Support Activities" },
+      { key: "archived", label: "Archived", unit: "TB", segment: "Archive & Storage" },
+      { key: "archiveInProgress", label: "Archive In Progress", unit: "TB", segment: "Archive & Storage" },
+      { key: "storageFreed", label: "Storage Freed", unit: "TB", segment: "Archive & Storage" },
     ],
   },
 ];

@@ -518,10 +518,20 @@ export default function InputClient({
                   ))}
                 </div>
 
-                {(team.sourceBreakdowns ?? []).map((sb) => {
+                {(team.sourceBreakdowns ?? []).map((sb, i) => {
                   const entries = data.sourceBreakdowns[team.key]?.[sb.key] ?? [];
+                  const breakdowns = team.sourceBreakdowns ?? [];
+                  const isNewSegment = !!sb.segment && sb.segment !== breakdowns[i - 1]?.segment;
                   return (
-                    <div key={sb.key} className="mt-4">
+                    <div key={sb.key} className={isNewSegment ? "mt-6" : "mt-4"}>
+                      {isNewSegment && (
+                        <h3
+                          className="mb-2 border-t pt-4 text-xs font-semibold uppercase tracking-wide"
+                          style={{ borderColor: "var(--border)", color: "var(--ink-muted)" }}
+                        >
+                          {sb.segment}
+                        </h3>
+                      )}
                       <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                         {sb.label} (by source{sb.unit ? `, ${sb.unit}` : ""})
                       </span>
