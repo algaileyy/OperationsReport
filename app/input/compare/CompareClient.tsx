@@ -87,14 +87,18 @@ export default function CompareClient({
                 label: g.label,
                 a: g.sumKeys.reduce((s, k) => s + (a[k] ?? 0), 0),
                 b: g.sumKeys.reduce((s, k) => s + (b[k] ?? 0), 0),
-                unit: undefined as string | undefined,
+                unitA: undefined as string | undefined,
+                unitB: undefined as string | undefined,
                 bold: true,
               })),
               ...team.fields.map((f) => ({
                 label: f.label,
                 a: a[f.key] ?? 0,
                 b: b[f.key] ?? 0,
-                unit: f.unit,
+                // A unitOptions field's unit can differ per month (whichever was picked on
+                // /input) — read each side's own choice rather than assuming one shared unit.
+                unitA: f.unit ?? (f.unitOptions ? dataA.fieldUnits?.[team.key]?.[f.key] ?? f.unitOptions[0] : undefined),
+                unitB: f.unit ?? (f.unitOptions ? dataB.fieldUnits?.[team.key]?.[f.key] ?? f.unitOptions[0] : undefined),
                 bold: false,
               })),
             ];
@@ -128,13 +132,13 @@ export default function CompareClient({
                               {row.label}
                             </td>
                             <td className="p-1.5" style={{ color: "var(--ink-secondary)" }}>
-                              {formatFieldValue(row.a, row.unit)}
+                              {formatFieldValue(row.a, row.unitA)}
                             </td>
                             <td className="p-1.5" style={{ color: "var(--ink-secondary)" }}>
-                              {formatFieldValue(row.b, row.unit)}
+                              {formatFieldValue(row.b, row.unitB)}
                             </td>
                             <td className="p-1.5">
-                              <DeltaCell delta={delta} pct={pct} unit={row.unit} />
+                              <DeltaCell delta={delta} pct={pct} unit={row.unitB} />
                             </td>
                           </tr>
                         );

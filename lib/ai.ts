@@ -74,9 +74,10 @@ export async function callAiTool<T>(opts: {
 export function buildTeamExtractionSchema(team: TeamConfig) {
   const fieldProps: Record<string, unknown> = {};
   for (const f of team.fields) {
+    const unitHint = f.unit ? ` (in ${f.unit})` : f.unitOptions ? ` (in ${f.unitOptions.join(" or ")})` : "";
     fieldProps[f.key] = {
       type: "number",
-      description: `${f.label}${f.unit ? ` (in ${f.unit})` : ""}. Omit if the text doesn't mention it.`,
+      description: `${f.label}${unitHint}. Omit if the text doesn't mention it.`,
     };
   }
 

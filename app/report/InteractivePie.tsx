@@ -18,6 +18,7 @@ export default function InteractivePie({
   colors,
   calloutFields = [],
   accentColor,
+  totalOverride,
 }: {
   fields: Slice[];
   colors: string[];
@@ -27,6 +28,10 @@ export default function InteractivePie({
   /** Background for a `highlight`-flagged callout's badge — falls back to a neutral dark shade
    * when omitted. */
   accentColor?: string;
+  /** Replaces the default (nothing hovered) center's "Total" figure — normally the sum of
+   * `fields` — with a manually entered number. Slice proportions still use the real sum;
+   * only the displayed headline figure changes. */
+  totalOverride?: number;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   // A hovered callout has no slice of its own to light up, but still takes over the center label —
@@ -61,12 +66,13 @@ export default function InteractivePie({
   const active = hover != null ? segments[hover] : null;
   const activeCallout = hoverCallout != null ? calloutFields[hoverCallout] : null;
 
+  const displayTotal = totalOverride ? totalOverride : sum;
   const centerLabel = activeCallout ? activeCallout.label.toUpperCase() : active ? `${active.pct}%` : "Total";
   const centerValue = activeCallout
     ? formatFieldValue(activeCallout.value, activeCallout.unit)
     : active
       ? formatNumber(active.value)
-      : formatNumber(sum);
+      : formatNumber(displayTotal);
   const centerColor = activeCallout ? "#5b6472" : active ? colors[active.i] : "#0b1d27";
 
   const calloutLegend = calloutFields.map((c, i) =>
@@ -107,7 +113,7 @@ export default function InteractivePie({
     )
   );
 
-  const centerOverlay = (hoverCallout != null || sum > 0) && (
+  const centerOverlay = (hoverCallout != null || displayTotal > 0) && (
     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
       <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: "#8b93a1" }}>
         {centerLabel}
@@ -119,7 +125,7 @@ export default function InteractivePie({
   );
 
   if (sum <= 0) {
-    if (calloutFields.length === 0) {
+    if (calloutFields.length === 0 && !totalOverride) {
       return (
         <div className="flex items-center gap-4">
           <div className="h-28 w-28 shrink-0 rounded-full print:h-20 print:w-20" style={{ border: "1px dashed #c3c9d1" }} />

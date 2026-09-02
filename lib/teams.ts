@@ -8,6 +8,11 @@ export type FieldConfig = {
    * a unit are shown as standalone callouts rather than pie-chart slices,
    * since a unit means they aren't a comparable count with the rest. */
   unit?: string;
+  /** Alternative to a fixed `unit` — lets whoever is entering data pick which unit a number is in
+   * (e.g. TB or GB), via a dropdown next to the input on /input. The chosen unit is saved per
+   * month/team/field in MonthlyReport.fieldUnits, defaulting to the first option. Mutually
+   * exclusive with `unit` in practice — set one or the other, not both. */
+  unitOptions?: string[];
   /** Renders this plain field inline within a sourceBreakdown segment's block on /input —
    * at the start or end of that segment's items — instead of in the top fields grid. For a
    * single aggregate number that belongs alongside a segment's by-source entries (e.g. a
@@ -72,6 +77,7 @@ export const TEAMS: TeamConfig[] = [
     accent: "violet",
     fields: [
       { key: "qualityControlCompleted", label: "Quality Control Completed in Hours", unit: "H", highlight: true },
+      { key: "storageFreed", label: "Storage Freed", unitOptions: ["TB", "GB"] },
     ],
     sourceBreakdowns: [
       { key: "catchUpContentReceived", label: "Catch-up Content Received", segment: "Catch-up Content" },

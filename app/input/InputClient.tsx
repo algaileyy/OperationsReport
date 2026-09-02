@@ -157,6 +157,20 @@ export default function InputClient({
     setData((d) => ({ ...d, totalTasksOverride: value === "" ? 0 : Number(value) }));
   }
 
+  function setFieldUnit(teamKey: string, fieldKey: string, unit: string) {
+    setData((d) => ({
+      ...d,
+      fieldUnits: { ...d.fieldUnits, [teamKey]: { ...d.fieldUnits[teamKey], [fieldKey]: unit } },
+    }));
+  }
+
+  function setTeamTotalOverride(teamKey: string, value: string) {
+    setData((d) => ({
+      ...d,
+      teamTotalOverrides: { ...d.teamTotalOverrides, [teamKey]: value === "" ? 0 : Number(value) },
+    }));
+  }
+
   function setNote(teamKey: string, value: string) {
     setData((d) => ({
       ...d,
@@ -530,15 +544,31 @@ export default function InputClient({
                           {field.label}
                           {field.unit && ` (${field.unit})`}
                         </span>
-                        <input
-                          type="number"
-                          min={0}
-                          inputMode="numeric"
-                          value={teamData[field.key] ?? ""}
-                          onChange={(e) => setField(team.key, field.key, e.target.value)}
-                          className="rounded-md border px-3 py-2 text-sm"
-                          style={inputStyle}
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            inputMode="numeric"
+                            value={teamData[field.key] ?? ""}
+                            onChange={(e) => setField(team.key, field.key, e.target.value)}
+                            className="flex-1 rounded-md border px-3 py-2 text-sm"
+                            style={inputStyle}
+                          />
+                          {field.unitOptions && (
+                            <select
+                              value={data.fieldUnits[team.key]?.[field.key] ?? field.unitOptions[0]}
+                              onChange={(e) => setFieldUnit(team.key, field.key, e.target.value)}
+                              className="rounded-md border px-2 py-2 text-sm"
+                              style={inputStyle}
+                            >
+                              {field.unitOptions.map((u) => (
+                                <option key={u} value={u}>
+                                  {u}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
                       </label>
                     ))}
                 </div>
@@ -658,6 +688,26 @@ export default function InputClient({
                   });
                   return nodes;
                 })()}
+
+                <label className="mt-4 flex flex-col gap-1">
+                  <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                    Total Tasks Override (this team&apos;s graph)
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    value={data.teamTotalOverrides?.[team.key] || ""}
+                    onChange={(e) => setTeamTotalOverride(team.key, e.target.value)}
+                    placeholder="Leave blank to auto-calculate from this team's numbers above"
+                    className="w-full max-w-xs rounded-md border px-3 py-2 text-sm"
+                    style={inputStyle}
+                  />
+                  <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                    Replaces the total shown in the center of this team&apos;s pie chart on the
+                    report. Leave blank to keep it auto-calculated.
+                  </span>
+                </label>
 
                 <label className="mt-4 flex flex-col gap-1">
                   <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>

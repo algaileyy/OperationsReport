@@ -27,6 +27,13 @@ export type MonthlyReport = {
    * unset (use the auto-calculated total), same "0 = nothing entered" convention every other
    * number field already uses. */
   totalTasksOverride: number;
+  /** teamKey -> fieldKey -> which of that field's unitOptions is currently selected (e.g. "TB" vs
+   * "GB" for Media Ingest's Storage Freed) — only meaningful for fields with unitOptions set. */
+  fieldUnits: Record<string, Record<string, string>>;
+  /** teamKey -> replaces that team's own pie card's "Total" center — its usual auto-sum of that
+   * team's unitless slices — when set. 0 means unset (use the auto-calculated total), same
+   * convention as totalTasksOverride above. */
+  teamTotalOverrides: Record<string, number>;
 };
 
 /** Certain breakdowns start with specific sources pre-listed (rather than left for someone to type
@@ -53,6 +60,8 @@ export function emptyReport(): MonthlyReport {
   const teams: Record<string, TeamData> = {};
   const notes: Record<string, string> = {};
   const sourceBreakdowns: SourceBreakdowns = {};
+  const fieldUnits: Record<string, Record<string, string>> = {};
+  const teamTotalOverrides: Record<string, number> = {};
   for (const t of TEAMS) {
     teams[t.key] = {};
     notes[t.key] = "";
@@ -60,6 +69,11 @@ export function emptyReport(): MonthlyReport {
     for (const sb of t.sourceBreakdowns ?? []) {
       sourceBreakdowns[t.key][sb.key] = withStarterSources([], sb.key);
     }
+    fieldUnits[t.key] = {};
+    for (const f of t.fields) {
+      if (f.unitOptions) fieldUnits[t.key][f.key] = f.unitOptions[0];
+    }
+    teamTotalOverrides[t.key] = 0;
   }
   return {
     teams,
@@ -68,6 +82,8 @@ export function emptyReport(): MonthlyReport {
     highlights: { mainAchievements: "", challenges: "", newInitiatives: "" },
     generalNotes: "",
     totalTasksOverride: 0,
+    fieldUnits,
+    teamTotalOverrides,
   };
 }
 
@@ -80,15 +96,21 @@ export function normalizeReport(raw: unknown): MonthlyReport {
     highlights?: Record<string, unknown>;
     generalNotes?: unknown;
     totalTasksOverride?: unknown;
+    fieldUnits?: Record<string, Record<string, unknown>>;
+    teamTotalOverrides?: Record<string, unknown>;
   } | null;
   const teamsSrc = src?.teams ?? {};
   const notesSrc = src?.notes ?? {};
   const sbSrc = src?.sourceBreakdowns ?? {};
   const highlightsSrc = src?.highlights ?? {};
+  const fieldUnitsSrc = src?.fieldUnits ?? {};
+  const teamTotalOverridesSrc = src?.teamTotalOverrides ?? {};
 
   const teams: Record<string, TeamData> = {};
   const notes: Record<string, string> = {};
   const sourceBreakdowns: SourceBreakdowns = {};
+  const fieldUnits: Record<string, Record<string, string>> = {};
+  const teamTotalOverrides: Record<string, number> = {};
 
   for (const team of TEAMS) {
     const teamSrc = teamsSrc[team.key] ?? {};
@@ -101,6 +123,17 @@ export function normalizeReport(raw: unknown): MonthlyReport {
 
     const note = notesSrc[team.key];
     notes[team.key] = typeof note === "string" ? note : "";
+
+    fieldUnits[team.key] = {};
+    for (const field of team.fields) {
+      if (!field.unitOptions) continue;
+      const raw = fieldUnitsSrc[team.key]?.[field.key];
+      fieldUnits[team.key][field.key] =
+        typeof raw === "string" && field.unitOptions.includes(raw) ? raw : field.unitOptions[0];
+    }
+
+    const overrideN = Number(teamTotalOverridesSrc[team.key]);
+    teamTotalOverrides[team.key] = Number.isFinite(overrideN) && overrideN >= 0 ? overrideN : 0;
 
     sourceBreakdowns[team.key] = {};
     for (const sb of team.sourceBreakdowns ?? []) {
@@ -135,5 +168,7 @@ export function normalizeReport(raw: unknown): MonthlyReport {
     highlights,
     generalNotes: typeof src?.generalNotes === "string" ? src.generalNotes : "",
     totalTasksOverride: Number.isFinite(totalTasksOverrideN) && totalTasksOverrideN >= 0 ? totalTasksOverrideN : 0,
+    fieldUnits,
+    teamTotalOverrides,
   };
 }

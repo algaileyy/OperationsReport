@@ -1,6 +1,6 @@
 import { monthRangeLabel } from "@/lib/months";
 import { formatFieldValue } from "@/lib/format";
-import { TEAMS, getTeam, type TeamConfig, type TeamData } from "@/lib/teams";
+import { TEAMS, getTeam, type FieldConfig, type TeamConfig, type TeamData } from "@/lib/teams";
 import type { MonthlyReport, SourceEntry } from "@/lib/report";
 import GroupRow from "./GroupRow";
 import ExportButton from "./ExportButton";
@@ -76,6 +76,16 @@ function displayUnit(configUnit?: string): string {
   return configUnit ?? " Assets";
 }
 
+/** A field's unit is either fixed (`unit`) or picked per-month via a dropdown on /input
+ * (`unitOptions`, e.g. Media Ingest's Storage Freed choosing TB vs GB) — this resolves whichever
+ * applies, falling back to the first option so a field is never left without a unit. Returns
+ * undefined only for a genuinely unitless field (a comparable count, eligible for a pie slice). */
+function effectiveFieldUnit(field: FieldConfig, teamFieldUnits: Record<string, string> | undefined): string | undefined {
+  if (field.unit) return field.unit;
+  if (field.unitOptions) return teamFieldUnits?.[field.key] ?? field.unitOptions[0];
+  return undefined;
+}
+
 /**
  * N distinct shades of one team's accent hue. Lightness is spread widely
  * (not a tight tint-toward-white ramp) and alternates a small hue nudge so
@@ -100,7 +110,7 @@ function totalTasksAcrossTeams(report: MonthlyReport): number {
   for (const team of TEAMS) {
     const data = report.teams[team.key] ?? {};
     for (const f of team.fields) {
-      if (!f.unit) total += data[f.key] ?? 0;
+      if (!effectiveFieldUnit(f, report.fieldUnits?.[team.key])) total += data[f.key] ?? 0;
     }
     for (const sb of team.sourceBreakdowns ?? []) {
       if (!sb.unit) {
@@ -267,11 +277,18 @@ function TeamPie({
   team,
   data,
   sourceTotals = [],
+  fieldUnits,
+  totalOverride,
 }: {
   team: TeamConfig;
   data: TeamData;
   /** Each source-breakdown's total, folded in alongside the plain fields. */
   sourceTotals?: { label: string; value: number; unit?: string; highlight?: boolean }[];
+  /** This team's fieldKey -> chosen unit, for fields with unitOptions (e.g. TB vs GB). */
+  fieldUnits?: Record<string, string>;
+  /** Overrides the donut's default "Total" center (this team's own auto-summed unitless slices)
+   * with a manually entered number, when set. */
+  totalOverride?: number;
 }) {
   const accent = ACCENT_HEX[team.accent];
   // Only unitless values are comparable counts and can share one pie; a
@@ -280,7 +297,9 @@ function TeamPie({
   // entirely, same as everywhere else in the report.
   const nonZeroTotals = sourceTotals.filter((s) => s.value !== 0);
   const pieFields = [
-    ...team.fields.filter((f) => !f.unit && (data[f.key] ?? 0) !== 0).map((f) => ({ label: f.label, value: data[f.key] ?? 0 })),
+    ...team.fields
+      .filter((f) => !effectiveFieldUnit(f, fieldUnits) && (data[f.key] ?? 0) !== 0)
+      .map((f) => ({ label: f.label, value: data[f.key] ?? 0 })),
     ...nonZeroTotals.filter((s) => !s.unit),
   ];
   // `highlight`-flagged callouts (Array.sort is stable, so this only promotes them ahead of the
@@ -288,8 +307,8 @@ function TeamPie({
   // out at a glance shouldn't depend on where their field happens to sit in the config.
   const calloutFields = [
     ...team.fields
-      .filter((f) => f.unit && (data[f.key] ?? 0) !== 0)
-      .map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit, highlight: f.highlight })),
+      .filter((f) => effectiveFieldUnit(f, fieldUnits) && (data[f.key] ?? 0) !== 0)
+      .map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: effectiveFieldUnit(f, fieldUnits), highlight: f.highlight })),
     ...nonZeroTotals.filter((s) => s.unit),
   ].sort((a, b) => (b.highlight ? 1 : 0) - (a.highlight ? 1 : 0));
 
@@ -302,8 +321,14 @@ function TeamPie({
           {team.name}
         </p>
       </div>
-      {(pieFields.length > 0 || calloutFields.length > 0) && (
-        <InteractivePie fields={pieFields} colors={colors} calloutFields={calloutFields} accentColor={accent} />
+      {(pieFields.length > 0 || calloutFields.length > 0 || !!totalOverride) && (
+        <InteractivePie
+          fields={pieFields}
+          colors={colors}
+          calloutFields={calloutFields}
+          accentColor={accent}
+          totalOverride={totalOverride}
+        />
       )}
     </div>
   );
@@ -433,7 +458,13 @@ export default function ReportView({
               >
                 <SectionHeading n={idx + 1} title={team.name} />
                 <div className="mb-4">
-                  <TeamPie team={team} data={teamData} sourceTotals={sourceTotals} />
+                  <TeamPie
+                    team={team}
+                    data={teamData}
+                    sourceTotals={sourceTotals}
+                    fieldUnits={report.fieldUnits?.[team.key]}
+                    totalOverride={report.teamTotalOverrides?.[team.key]}
+                  />
                 </div>
                 <div className="overflow-x-auto rounded-lg" style={{ border: `1px solid ${PANEL_BORDER}` }}>
                   <table className="w-full border-collapse">
@@ -520,7 +551,12 @@ export default function ReportView({
                               <Td>
                                 <strong style={{ color: TEXT_BRIGHT }}>{field.label}</strong>
                               </Td>
-                              <Td>{formatFieldValue(teamData[field.key] ?? 0, displayUnit(field.unit))}</Td>
+                              <Td>
+                                {formatFieldValue(
+                                  teamData[field.key] ?? 0,
+                                  displayUnit(effectiveFieldUnit(field, report.fieldUnits?.[team.key]))
+                                )}
+                              </Td>
                             </tr>
                           );
                         })}
