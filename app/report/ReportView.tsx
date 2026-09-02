@@ -1,9 +1,10 @@
 import { monthRangeLabel } from "@/lib/months";
-import { formatNumber, formatFieldValue } from "@/lib/format";
+import { formatFieldValue } from "@/lib/format";
 import { TEAMS, getTeam, type TeamConfig, type TeamData } from "@/lib/teams";
 import type { MonthlyReport, SourceEntry } from "@/lib/report";
 import GroupRow from "./GroupRow";
 import ExportButton from "./ExportButton";
+import InteractivePie from "./InteractivePie";
 
 const PANEL = "rgba(255,255,255,0.07)";
 const PANEL_BORDER = "rgba(255,255,255,0.14)";
@@ -285,18 +286,6 @@ function TeamPie({
   ];
 
   const colors = shadeSteps(accent, pieFields.length);
-  const sum = pieFields.reduce((s, f) => s + f.value, 0);
-  const denom = sum || 1;
-
-  let cumulative = 0;
-  const stops = pieFields
-    .map((f, i) => {
-      const startDeg = (cumulative / denom) * 360;
-      cumulative += f.value;
-      const endDeg = (cumulative / denom) * 360;
-      return `${colors[i]} ${startDeg}deg ${endDeg}deg`;
-    })
-    .join(", ");
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-xl print:break-inside-avoid print:rounded-lg print:p-3 print:shadow-none">
@@ -310,33 +299,7 @@ function TeamPie({
           </p>
         ))}
       </div>
-      {pieFields.length > 0 && (
-        <div className="flex items-center gap-4">
-          <div
-            className="h-28 w-28 shrink-0 rounded-full print:h-20 print:w-20"
-            style={{
-              background: sum > 0 ? `conic-gradient(${stops})` : "#e4e7ec",
-              border: sum > 0 ? undefined : "1px dashed #c3c9d1",
-            }}
-          />
-          {sum > 0 ? (
-            <div className="flex flex-col gap-1 text-xs" style={{ color: "#33454f" }}>
-              {pieFields.map((f, i) => (
-                <div key={f.label} className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colors[i] }} />
-                  <span>
-                    {f.label}: <strong>{formatNumber(f.value)}</strong>
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm italic" style={{ color: "#8b93a1" }}>
-              No data entered yet for this team.
-            </p>
-          )}
-        </div>
-      )}
+      {pieFields.length > 0 && <InteractivePie fields={pieFields} colors={colors} />}
     </div>
   );
 }
