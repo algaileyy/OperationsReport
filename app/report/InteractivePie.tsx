@@ -4,7 +4,7 @@ import { useState } from "react";
 import { formatNumber, formatFieldValue } from "@/lib/format";
 
 type Slice = { label: string; value: number };
-type Callout = { label: string; value: number; unit?: string };
+type Callout = { label: string; value: number; unit?: string; highlight?: boolean };
 
 /**
  * SVG donut chart with hover-highlighted slices, a synced legend, and a
@@ -17,17 +17,16 @@ export default function InteractivePie({
   fields,
   colors,
   calloutFields = [],
-  defaultCenter,
+  accentColor,
 }: {
   fields: Slice[];
   colors: string[];
   /** Unit-bearing figures (e.g. TB) that can't share the donut with plain counts — shown as extra
    * legend rows instead, with a neutral marker since they don't correspond to a slice. */
   calloutFields?: Callout[];
-  /** Overrides the default (nothing hovered) center label/value, in place of the usual "Total" sum
-   * of the pie's own unitless slices — e.g. Digital Archive shows its total TB there instead, since
-   * that's the figure that actually matters for that team. */
-  defaultCenter?: { label: string; value: number; unit?: string };
+  /** Background for a `highlight`-flagged callout's badge — falls back to a neutral dark shade
+   * when omitted. */
+  accentColor?: string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   // A hovered callout has no slice of its own to light up, but still takes over the center label —
@@ -62,41 +61,53 @@ export default function InteractivePie({
   const active = hover != null ? segments[hover] : null;
   const activeCallout = hoverCallout != null ? calloutFields[hoverCallout] : null;
 
-  const centerLabel = activeCallout
-    ? activeCallout.label.toUpperCase()
-    : active
-      ? `${active.pct}%`
-      : defaultCenter
-        ? defaultCenter.label.toUpperCase()
-        : "Total";
+  const centerLabel = activeCallout ? activeCallout.label.toUpperCase() : active ? `${active.pct}%` : "Total";
   const centerValue = activeCallout
     ? formatFieldValue(activeCallout.value, activeCallout.unit)
     : active
       ? formatNumber(active.value)
-      : defaultCenter
-        ? formatFieldValue(defaultCenter.value, defaultCenter.unit)
-        : formatNumber(sum);
+      : formatNumber(sum);
   const centerColor = activeCallout ? "#5b6472" : active ? colors[active.i] : "#0b1d27";
 
-  const calloutLegend = calloutFields.map((c, i) => (
-    <div
-      key={c.label}
-      className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors"
-      style={{ background: hoverCallout === i ? "rgba(0,0,0,0.05)" : "transparent", cursor: "pointer" }}
-      onMouseEnter={() => {
-        setHoverCallout(i);
-        setHover(null);
-      }}
-      onMouseLeave={() => setHoverCallout((h) => (h === i ? null : h))}
-    >
-      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: "#8b93a1" }} />
-      <span>
-        {c.label}: <strong>{formatFieldValue(c.value, c.unit)}</strong>
-      </span>
-    </div>
-  ));
+  const calloutLegend = calloutFields.map((c, i) =>
+    c.highlight ? (
+      <div
+        key={c.label}
+        className="flex items-center justify-between gap-3 rounded-md px-2 py-1 transition-opacity"
+        style={{ background: accentColor ?? "#0b1d27", cursor: "pointer", opacity: hoverCallout === i ? 0.85 : 1 }}
+        onMouseEnter={() => {
+          setHoverCallout(i);
+          setHover(null);
+        }}
+        onMouseLeave={() => setHoverCallout((h) => (h === i ? null : h))}
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.85)" }}>
+          {c.label}
+        </span>
+        <span className="text-xs font-extrabold" style={{ color: "#ffffff" }}>
+          {formatFieldValue(c.value, c.unit)}
+        </span>
+      </div>
+    ) : (
+      <div
+        key={c.label}
+        className="flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors"
+        style={{ background: hoverCallout === i ? "rgba(0,0,0,0.05)" : "transparent", cursor: "pointer" }}
+        onMouseEnter={() => {
+          setHoverCallout(i);
+          setHover(null);
+        }}
+        onMouseLeave={() => setHoverCallout((h) => (h === i ? null : h))}
+      >
+        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: "#8b93a1" }} />
+        <span>
+          {c.label}: <strong>{formatFieldValue(c.value, c.unit)}</strong>
+        </span>
+      </div>
+    )
+  );
 
-  const centerOverlay = (hoverCallout != null || sum > 0 || defaultCenter != null) && (
+  const centerOverlay = (hoverCallout != null || sum > 0) && (
     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
       <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: "#8b93a1" }}>
         {centerLabel}

@@ -13,6 +13,9 @@ export type FieldConfig = {
    * single aggregate number that belongs alongside a segment's by-source entries (e.g. a
    * "Received"/"In Progress" count bookending a Passed/Failed QC breakdown). */
   segmentSlot?: { segment: string; position: "start" | "end" };
+  /** Renders this field's callout as a bold accent-colored badge in the pie card instead of
+   * plain text — for the unit-bearing figures worth calling out at a glance. */
+  highlight?: boolean;
 };
 
 /**
@@ -48,6 +51,9 @@ export type SourceBreakdownConfig = {
    * given source belongs to before its numbers are entered. Mirrors the grouping already
    * shown on /report (see ReportView's archivingSupport tree). */
   segment?: string;
+  /** Renders this breakdown's callout as a bold accent-colored badge in the pie card instead of
+   * plain text — for the unit-bearing figures worth calling out at a glance. */
+  highlight?: boolean;
 };
 
 export type TeamConfig = {
@@ -64,7 +70,9 @@ export const TEAMS: TeamConfig[] = [
     key: "mediaIngest",
     name: "Media Ingest",
     accent: "violet",
-    fields: [{ key: "qualityControlCompleted", label: "Quality Control Completed in Hours" }],
+    fields: [
+      { key: "qualityControlCompleted", label: "Quality Control Completed in Hours", unit: "H", highlight: true },
+    ],
     sourceBreakdowns: [
       { key: "catchUpContentReceived", label: "Catch-up Content Received", segment: "Catch-up Content" },
       { key: "catchUpContentFailed", label: "Catch-up Content Failed", segment: "Catch-up Content" },
@@ -119,6 +127,7 @@ export const TEAMS: TeamConfig[] = [
     fields: [
       { key: "textlessCleansReceived", label: "Received QC", segmentSlot: { segment: "Textless/Cleans QC", position: "start" } },
       { key: "textlessCleansInProgress", label: "QC in Progress", segmentSlot: { segment: "Textless/Cleans QC", position: "end" } },
+      { key: "textlessCleansSize", label: "Size", unit: "GB", segmentSlot: { segment: "Textless/Cleans QC", position: "end" } },
     ],
     sourceBreakdowns: [
       { key: "textlessCleansPassedQC", label: "Passed QC", segment: "Textless/Cleans QC" },
@@ -131,9 +140,9 @@ export const TEAMS: TeamConfig[] = [
       { key: "revisioningBySource", label: "Re-versioning", segment: "Production Support Activities" },
       { key: "editingBySource", label: "Editing", segment: "Production Support Activities" },
       { key: "upscalingBySource", label: "Upscaling", segment: "Production Support Activities" },
-      { key: "archived", label: "Archived", unit: "TB", segment: "Archive & Storage" },
+      { key: "archived", label: "Archived", unit: "TB", segment: "Archive & Storage", highlight: true },
       { key: "archiveInProgress", label: "Archive In Progress", unit: "TB", segment: "Archive & Storage" },
-      { key: "storageFreed", label: "Storage Freed", unit: "TB", segment: "Archive & Storage" },
+      { key: "storageFreed", label: "Storage Freed", unit: "TB", segment: "Archive & Storage", highlight: true },
     ],
   },
 ];

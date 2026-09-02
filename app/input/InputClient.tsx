@@ -522,8 +522,8 @@ export default function InputClient({
 
                 {(() => {
                   const breakdowns = team.sourceBreakdowns ?? [];
-                  const slotField = (segment: string, position: "start" | "end") =>
-                    team.fields.find((f) => f.segmentSlot?.segment === segment && f.segmentSlot.position === position);
+                  const slotFields = (segment: string, position: "start" | "end") =>
+                    team.fields.filter((f) => f.segmentSlot?.segment === segment && f.segmentSlot.position === position);
 
                   const plainFieldBlock = (field: FieldConfig, topMargin: string) => (
                     <div key={field.key} className={topMargin}>
@@ -561,8 +561,9 @@ export default function InputClient({
                           {sb.segment}
                         </h3>
                       );
-                      const startField = slotField(sb.segment!, "start");
-                      if (startField) nodes.push(plainFieldBlock(startField, "mb-4"));
+                      for (const field of slotFields(sb.segment!, "start")) {
+                        nodes.push(plainFieldBlock(field, "mb-4"));
+                      }
                     }
 
                     nodes.push(
@@ -627,8 +628,9 @@ export default function InputClient({
                     );
 
                     if (isLastOfSegment) {
-                      const endField = slotField(sb.segment!, "end");
-                      if (endField) nodes.push(plainFieldBlock(endField, "mt-4"));
+                      for (const field of slotFields(sb.segment!, "end")) {
+                        nodes.push(plainFieldBlock(field, "mt-4"));
+                      }
                     }
                   });
                   return nodes;

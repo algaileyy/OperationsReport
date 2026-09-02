@@ -269,7 +269,7 @@ function TeamPie({
   team: TeamConfig;
   data: TeamData;
   /** Each source-breakdown's total, folded in alongside the plain fields. */
-  sourceTotals?: { label: string; value: number; unit?: string }[];
+  sourceTotals?: { label: string; value: number; unit?: string; highlight?: boolean }[];
 }) {
   const accent = ACCENT_HEX[team.accent];
   // Only unitless values are comparable counts and can share one pie; a
@@ -284,17 +284,11 @@ function TeamPie({
   const calloutFields = [
     ...team.fields
       .filter((f) => f.unit && (data[f.key] ?? 0) !== 0)
-      .map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit })),
+      .map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit, highlight: f.highlight })),
     ...nonZeroTotals.filter((s) => s.unit),
   ];
 
   const colors = shadeSteps(accent, pieFields.length);
-  // Digital Archive's headline number is how much it archived, not a count of QC/support actions —
-  // so its donut defaults to total TB instead of the usual sum of unitless slices.
-  const defaultCenter =
-    team.key === "archivingSupport" && calloutFields.length > 0
-      ? { label: "Total TB", value: calloutFields.reduce((s, f) => s + f.value, 0), unit: calloutFields[0].unit }
-      : undefined;
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-xl print:break-inside-avoid print:rounded-lg print:p-3 print:shadow-none">
@@ -304,7 +298,7 @@ function TeamPie({
         </p>
       </div>
       {(pieFields.length > 0 || calloutFields.length > 0) && (
-        <InteractivePie fields={pieFields} colors={colors} calloutFields={calloutFields} defaultCenter={defaultCenter} />
+        <InteractivePie fields={pieFields} colors={colors} calloutFields={calloutFields} accentColor={accent} />
       )}
     </div>
   );
@@ -422,7 +416,7 @@ export default function ReportView({
             const sourceBreakdowns = team.sourceBreakdowns ?? [];
             const sourceTotals = sourceBreakdowns.map((sb) => {
               const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
-              return { label: sb.label, value: entries.reduce((s, e) => s + e.count, 0), unit: sb.unit };
+              return { label: sb.label, value: entries.reduce((s, e) => s + e.count, 0), unit: sb.unit, highlight: sb.highlight };
             });
             let rowIndex = 0;
 
@@ -577,6 +571,7 @@ export default function ReportView({
                           // nested under it — same pattern as Media Ingest's QC Hours total above.
                           const textlessReceived = teamData["textlessCleansReceived"] ?? 0;
                           const textlessInProgress = teamData["textlessCleansInProgress"] ?? 0;
+                          const textlessSize = teamData["textlessCleansSize"] ?? 0;
                           const textlessTotal = textlessReceived;
                           const rushesTotal = rushesReceived.total + rushesPassedQC.total + rushesFailedQC.total;
                           const projectFilesTotal = filesPassed.total + filesReceived.total;
@@ -596,6 +591,7 @@ export default function ReportView({
                                     { key: "passedQC", label: "Passed QC", ...passedQC },
                                     { key: "failedQC", label: "Failed QC", ...failedQC },
                                     { key: "qcInProgress", label: "QC in Progress", total: textlessInProgress, detail: [] },
+                                    { key: "textlessSize", label: "Size", total: textlessSize, unit: "GB", detail: [] },
                                   ],
                                 },
                                 {
