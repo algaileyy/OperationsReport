@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, formatFieldValue } from "@/lib/format";
 
 type Slice = { label: string; value: number };
+type Callout = { label: string; value: number; unit?: string };
 
 /**
  * SVG donut chart with hover-highlighted slices, a synced legend, and a
@@ -12,7 +13,17 @@ type Slice = { label: string; value: number };
  * dependencies (a stroke-based donut plus React hover state instead of a
  * charting library).
  */
-export default function InteractivePie({ fields, colors }: { fields: Slice[]; colors: string[] }) {
+export default function InteractivePie({
+  fields,
+  colors,
+  calloutFields = [],
+}: {
+  fields: Slice[];
+  colors: string[];
+  /** Unit-bearing figures (e.g. TB) that can't share the donut with plain counts — shown as extra
+   * legend rows instead, with a neutral marker since they don't correspond to a slice. */
+  calloutFields?: Callout[];
+}) {
   const [hover, setHover] = useState<number | null>(null);
   const sum = fields.reduce((s, f) => s + f.value, 0);
   const r = 36;
@@ -41,14 +52,32 @@ export default function InteractivePie({ fields, colors }: { fields: Slice[]; co
   });
 
   const active = hover != null ? segments[hover] : null;
+  const calloutLegend = calloutFields.map((c) => (
+    <div key={c.label} className="flex items-center gap-1.5 rounded px-1 py-0.5">
+      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: "#8b93a1" }} />
+      <span>
+        {c.label}: <strong>{formatFieldValue(c.value, c.unit)}</strong>
+      </span>
+    </div>
+  ));
 
   if (sum <= 0) {
+    if (calloutFields.length === 0) {
+      return (
+        <div className="flex items-center gap-4">
+          <div className="h-28 w-28 shrink-0 rounded-full print:h-20 print:w-20" style={{ border: "1px dashed #c3c9d1" }} />
+          <p className="text-sm italic" style={{ color: "#8b93a1" }}>
+            No data entered yet for this team.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center gap-4">
         <div className="h-28 w-28 shrink-0 rounded-full print:h-20 print:w-20" style={{ border: "1px dashed #c3c9d1" }} />
-        <p className="text-sm italic" style={{ color: "#8b93a1" }}>
-          No data entered yet for this team.
-        </p>
+        <div className="flex flex-col gap-1 text-xs" style={{ color: "#33454f" }}>
+          {calloutLegend}
+        </div>
       </div>
     );
   }
@@ -105,6 +134,7 @@ export default function InteractivePie({ fields, colors }: { fields: Slice[]; co
         )}
       </div>
       <div className="flex flex-col gap-1 text-xs" style={{ color: "#33454f" }}>
+        {calloutLegend}
         {segments.map((s) => (
           <div
             key={s.label + s.i}

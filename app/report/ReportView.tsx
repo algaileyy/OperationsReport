@@ -292,17 +292,14 @@ function TeamPie({
 
   return (
     <div className="rounded-xl bg-white p-5 shadow-xl print:break-inside-avoid print:rounded-lg print:p-3 print:shadow-none">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3 print:mb-2">
+      <div className="mb-3 print:mb-2">
         <p className="text-sm font-bold" style={{ color: accent }}>
           {team.name}
         </p>
-        {calloutFields.map((f) => (
-          <p key={f.label} className="text-sm" style={{ color: "#33454f" }}>
-            {f.label}: <strong style={{ color: "#0b1d27" }}>{formatFieldValue(f.value, f.unit)}</strong>
-          </p>
-        ))}
       </div>
-      {pieFields.length > 0 && <InteractivePie fields={pieFields} colors={colors} />}
+      {(pieFields.length > 0 || calloutFields.length > 0) && (
+        <InteractivePie fields={pieFields} colors={colors} calloutFields={calloutFields} />
+      )}
     </div>
   );
 }
