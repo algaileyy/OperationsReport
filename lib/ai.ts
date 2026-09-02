@@ -83,10 +83,11 @@ export function buildTeamExtractionSchema(team: TeamConfig) {
 
   const sbProps: Record<string, unknown> = {};
   for (const sb of team.sourceBreakdowns ?? []) {
+    const unitHint = sb.unit ? ` (in ${sb.unit})` : sb.unitOptions ? ` (in ${sb.unitOptions.join(" or ")}, per entry)` : "";
     sbProps[sb.key] = {
       type: "array",
       description:
-        `${sb.label}${sb.unit ? ` (in ${sb.unit})` : ""} — one entry per source/client/channel mentioned. ` +
+        `${sb.label}${unitHint} — one entry per source/client/channel mentioned. ` +
         `Omit this key entirely if the text doesn't mention it.`,
       items: {
         type: "object",

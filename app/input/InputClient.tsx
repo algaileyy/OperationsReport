@@ -6,7 +6,8 @@ import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import { monthLabel } from "@/lib/months";
 import { TEAMS, type FieldConfig } from "@/lib/teams";
-import type { MonthlyReport, ReportHighlights, SourceEntry } from "@/lib/report";
+import { sumSourceEntries, type MonthlyReport, type ReportHighlights, type SourceEntry } from "@/lib/report";
+import { formatFieldValue } from "@/lib/format";
 
 const ACCENT_HEX: Record<string, string> = {
   blue: "#2a78d6",
@@ -622,7 +623,8 @@ export default function InputClient({
                     nodes.push(
                       <div key={sb.key} className={isNewSegment ? "" : "mt-4"}>
                         <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                          {sb.label} (by source{sb.unit ? `, ${sb.unit}` : ""})
+                          {sb.label} (by source
+                          {sb.unit ? `, ${sb.unit}` : sb.unitOptions ? `, ${sb.unitOptions.join(" or ")}` : ""})
                         </span>
                         <div className="mt-1 flex flex-col gap-2">
                           {entries.map((entry) => (
@@ -655,6 +657,26 @@ export default function InputClient({
                                 className="w-24 rounded-md border px-3 py-2 text-sm"
                                 style={inputStyle}
                               />
+                              {sb.unitOptions && (
+                                <select
+                                  value={entry.unit ?? sb.unitOptions[0]}
+                                  onChange={(e) =>
+                                    setSourceEntries(
+                                      team.key,
+                                      sb.key,
+                                      entries.map((x) => (x.id === entry.id ? { ...x, unit: e.target.value } : x))
+                                    )
+                                  }
+                                  className="rounded-md border px-2 py-2 text-sm"
+                                  style={inputStyle}
+                                >
+                                  {sb.unitOptions.map((u) => (
+                                    <option key={u} value={u}>
+                                      {u}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => setSourceEntries(team.key, sb.key, entries.filter((x) => x.id !== entry.id))}
@@ -669,13 +691,24 @@ export default function InputClient({
                           <button
                             type="button"
                             onClick={() =>
-                              setSourceEntries(team.key, sb.key, [...entries, { id: newId("src"), source: "", count: 0 }])
+                              setSourceEntries(team.key, sb.key, [
+                                ...entries,
+                                { id: newId("src"), source: "", count: 0, unit: sb.unitOptions?.[0] },
+                              ])
                             }
                             className="self-start rounded-md border px-3 py-1.5 text-sm font-medium"
                             style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
                           >
                             + Add source
                           </button>
+                          {sb.unitOptions && entries.length > 0 && (
+                            <p className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                              Total:{" "}
+                              <strong style={{ color: "var(--ink-primary)" }}>
+                                {formatFieldValue(sumSourceEntries(entries, sb), sb.unitOptions[0])}
+                              </strong>
+                            </p>
+                          )}
                         </div>
                       </div>
                     );

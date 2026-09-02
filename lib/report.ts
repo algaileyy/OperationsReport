@@ -1,10 +1,31 @@
-import { TEAMS, type TeamData } from "./teams";
+import { TEAMS, type SourceBreakdownConfig, type TeamData } from "./teams";
 
 export type SourceEntry = {
   id: string;
   source: string;
   count: number;
+  /** Only meaningful when the breakdown has unitOptions (e.g. Media Ingest's Content Size) —
+   * which unit this particular entry's count is in, so entries can mix TB and GB. */
+  unit?: string;
 };
+
+/** How many of the breakdown's canonical unit (unitOptions[0]) one of this unit equals — only
+ * TB/GB pairs exist today, so this is the only conversion needed. */
+const UNIT_CONVERSION: Record<string, number> = { TB: 1, GB: 0.001 };
+
+/** Sums a breakdown's entries into its canonical unit (unitOptions[0]), converting any entry
+ * that used a different unit (e.g. a GB entry folded into a TB total) — a plain sum for a
+ * breakdown without unitOptions, since every entry then shares the same fixed (or absent) unit. */
+export function sumSourceEntries(entries: SourceEntry[], sb: SourceBreakdownConfig): number {
+  if (!sb.unitOptions) return entries.reduce((s, e) => s + e.count, 0);
+  const canonical = sb.unitOptions[0];
+  const canonicalFactor = UNIT_CONVERSION[canonical] ?? 1;
+  return entries.reduce((s, e) => {
+    const unit = e.unit && sb.unitOptions!.includes(e.unit) ? e.unit : canonical;
+    const factor = (UNIT_CONVERSION[unit] ?? 1) / canonicalFactor;
+    return s + e.count * factor;
+  }, 0);
+}
 
 /** teamKey -> breakdownKey -> entries */
 export type SourceBreakdowns = Record<string, Record<string, SourceEntry[]>>;
@@ -146,6 +167,10 @@ export function normalizeReport(raw: unknown): MonthlyReport {
               id: typeof entry?.id === "string" ? entry.id : `${sb.key}-${i}`,
               source: typeof entry?.source === "string" ? entry.source : "",
               count: Number.isFinite(count) && count >= 0 ? count : 0,
+              unit:
+                sb.unitOptions && typeof entry?.unit === "string" && sb.unitOptions.includes(entry.unit)
+                  ? entry.unit
+                  : sb.unitOptions?.[0],
             };
           })
         : [];

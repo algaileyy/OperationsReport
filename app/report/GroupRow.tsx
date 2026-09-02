@@ -9,7 +9,10 @@ const TEXT_DETAIL = "#cfeef2";
 const ROW_ALT = "rgba(255,255,255,0.04)";
 const DETAIL_BG = "rgba(0,0,0,0.12)";
 
-type DetailItem = { label: string; value: number };
+/** `unit` overrides the row's shared `unit` for this one entry — for a breakdown where entries
+ * mix units (e.g. one source in TB, another in GB), so each shows what it was actually entered
+ * as while the row's own total still uses the row's canonical unit. */
+type DetailItem = { label: string; value: number; unit?: string };
 
 /** Label/detail padding at each nesting depth — Tailwind needs literal class names, so this is a
  * small fixed lookup rather than a computed string. Only 0-2 are used (three levels deep, max). */
@@ -148,7 +151,7 @@ export default function GroupRow({
                 {d.label}
               </td>
               <td className="px-3 py-1.5 text-sm" style={{ color: TEXT_DETAIL }}>
-                {formatFieldValue(d.value, unit)}
+                {formatFieldValue(d.value, d.unit ?? unit)}
               </td>
             </tr>
           ))}

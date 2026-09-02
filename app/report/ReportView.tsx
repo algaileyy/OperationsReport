@@ -1,7 +1,7 @@
 import { monthRangeLabel } from "@/lib/months";
 import { formatFieldValue } from "@/lib/format";
-import { TEAMS, getTeam, type FieldConfig, type TeamConfig, type TeamData } from "@/lib/teams";
-import type { MonthlyReport, SourceEntry } from "@/lib/report";
+import { TEAMS, getTeam, type FieldConfig, type SourceBreakdownConfig, type TeamConfig, type TeamData } from "@/lib/teams";
+import { sumSourceEntries, type MonthlyReport, type SourceEntry } from "@/lib/report";
 import GroupRow, { InfoIcon } from "./GroupRow";
 import ExportButton from "./ExportButton";
 import InteractivePie from "./InteractivePie";
@@ -86,6 +86,13 @@ function effectiveFieldUnit(field: FieldConfig, teamFieldUnits: Record<string, s
   return undefined;
 }
 
+/** A source breakdown's display unit — either fixed, or the canonical (first) option of a
+ * unitOptions breakdown, since its total is always expressed in that unit regardless of which
+ * unit individual entries used. */
+function effectiveBreakdownUnit(sb: SourceBreakdownConfig): string | undefined {
+  return sb.unit ?? sb.unitOptions?.[0];
+}
+
 /**
  * N distinct shades of one team's accent hue. Lightness is spread widely
  * (not a tight tint-toward-white ramp) and alternates a small hue nudge so
@@ -113,7 +120,7 @@ function totalTasksAcrossTeams(report: MonthlyReport): number {
       if (!effectiveFieldUnit(f, report.fieldUnits?.[team.key])) total += data[f.key] ?? 0;
     }
     for (const sb of team.sourceBreakdowns ?? []) {
-      if (!sb.unit) {
+      if (!effectiveBreakdownUnit(sb)) {
         const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
         total += entries.reduce((s, e) => s + e.count, 0);
       }
@@ -468,7 +475,12 @@ export default function ReportView({
             const sourceBreakdowns = team.sourceBreakdowns ?? [];
             const sourceTotals = sourceBreakdowns.map((sb) => {
               const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
-              return { label: sb.label, value: entries.reduce((s, e) => s + e.count, 0), unit: sb.unit, highlight: sb.highlight };
+              return {
+                label: sb.label,
+                value: sumSourceEntries(entries, sb),
+                unit: effectiveBreakdownUnit(sb),
+                highlight: sb.highlight,
+              };
             });
             let rowIndex = 0;
 
@@ -540,11 +552,11 @@ export default function ReportView({
                         })
                         .map((sb) => {
                           const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
-                          const total = entries.reduce((s, e) => s + e.count, 0);
+                          const total = sumSourceEntries(entries, sb);
                           if (total === 0) return null;
                           const detail = entries
                             .filter((e) => e.count !== 0)
-                            .map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
+                            .map((e) => ({ label: e.source || "(unnamed source)", value: e.count, unit: e.unit }));
                           const alt = rowIndex++ % 2 === 1;
                           return (
                             <GroupRow
@@ -553,7 +565,7 @@ export default function ReportView({
                               total={total}
                               detail={detail}
                               altRow={alt}
-                              unit={displayUnit(sb.unit)}
+                              unit={displayUnit(effectiveBreakdownUnit(sb))}
                               infoText={
                                 sb.key === "artworkAndBadgesIngested"
                                   ? "Badges get burnt onto show and movie artwork using a tool operated by Media Ingest team."

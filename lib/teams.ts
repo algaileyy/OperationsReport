@@ -51,6 +51,11 @@ export type SourceBreakdownConfig = {
   label: string;
   /** e.g. "TB" — when set, the total and its entries are formatted with this unit. */
   unit?: string;
+  /** Alternative to a fixed `unit` — lets whoever is entering data pick a unit per source entry
+   * (e.g. one source in TB, another in GB), via a dropdown next to each entry's count on /input.
+   * Entries are converted to the first option (the canonical unit) when totaled, so mixed-unit
+   * entries still sum correctly. Mutually exclusive with `unit` in practice. */
+  unitOptions?: string[];
   /** Groups consecutive breakdowns under a shared heading on /input — several segments
    * reuse labels like "Passed QC" or "Received", so this makes clear which segment a
    * given source belongs to before its numbers are entered. Mirrors the grouping already
@@ -88,7 +93,7 @@ export const TEAMS: TeamConfig[] = [
       { key: "archiveContentFailed", label: "Archive Content Failed", segment: "Archive Content" },
       { key: "archiveContentPassed", label: "Archive Content Passed", segment: "Archive Content" },
       { key: "ingestedArchiveContent", label: "Archive Content Ingested", segment: "Archive Content" },
-      { key: "contentSize", label: "Content Size", unit: "TB" },
+      { key: "contentSize", label: "Content Size", unitOptions: ["TB", "GB"] },
       { key: "artworkAndBadgesIngested", label: "Artwork and Badges Ingested", segment: "Artwork & Thumbnails" },
       { key: "episodicThumbnails", label: "Episodic Thumbnails", segment: "Artwork & Thumbnails" },
     ],
