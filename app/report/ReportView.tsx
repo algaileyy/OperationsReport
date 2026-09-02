@@ -269,7 +269,7 @@ function TeamPie({
   team: TeamConfig;
   data: TeamData;
   /** Each source-breakdown's total, folded in alongside the plain fields. */
-  sourceTotals?: { label: string; value: number; unit?: string }[];
+  sourceTotals?: { label: string; value: number; unit?: string; highlight?: boolean }[];
 }) {
   const accent = ACCENT_HEX[team.accent];
   // Only unitless values are comparable counts and can share one pie; a
@@ -281,7 +281,9 @@ function TeamPie({
     ...sourceTotals.filter((s) => !s.unit),
   ];
   const calloutFields = [
-    ...visibleFields.filter((f) => f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit })),
+    ...visibleFields
+      .filter((f) => f.unit)
+      .map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit, highlight: undefined as boolean | undefined })),
     ...sourceTotals.filter((s) => s.unit),
   ];
 
@@ -293,11 +295,26 @@ function TeamPie({
         <p className="text-sm font-bold" style={{ color: accent }}>
           {team.name}
         </p>
-        {calloutFields.map((f) => (
-          <p key={f.label} className="text-sm" style={{ color: "#33454f" }}>
-            {f.label}: <strong style={{ color: "#0b1d27" }}>{formatFieldValue(f.value, f.unit)}</strong>
-          </p>
-        ))}
+        {calloutFields.map((f) =>
+          f.highlight ? (
+            <div
+              key={f.label}
+              className="rounded-lg px-3 py-1.5"
+              style={{ background: accent }}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.85)" }}>
+                {f.label}
+              </p>
+              <p className="text-lg font-extrabold leading-tight" style={{ color: "#ffffff" }}>
+                {formatFieldValue(f.value, f.unit)}
+              </p>
+            </div>
+          ) : (
+            <p key={f.label} className="text-sm" style={{ color: "#33454f" }}>
+              {f.label}: <strong style={{ color: "#0b1d27" }}>{formatFieldValue(f.value, f.unit)}</strong>
+            </p>
+          )
+        )}
       </div>
       {pieFields.length > 0 && <InteractivePie fields={pieFields} colors={colors} />}
     </div>
@@ -360,7 +377,7 @@ export default function ReportView({
             const sourceBreakdowns = team.sourceBreakdowns ?? [];
             const sourceTotals = sourceBreakdowns.map((sb) => {
               const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
-              return { label: sb.label, value: entries.reduce((s, e) => s + e.count, 0), unit: sb.unit };
+              return { label: sb.label, value: entries.reduce((s, e) => s + e.count, 0), unit: sb.unit, highlight: sb.highlight };
             });
             let rowIndex = 0;
 
