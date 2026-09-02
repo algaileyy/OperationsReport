@@ -462,7 +462,7 @@ export default function ReportView({
                               detail={[]}
                               altRow={altParent}
                               unit=" H"
-                              infoText="Quality Control review checks each ingested asset for technical issues — corrupted files, wrong format or resolution, missing metadata, or audio/video sync problems. Assets that fail QC are rejected and re-requested from the source instead of being published, which is why the Failed counts below aren't always zero."
+                              infoText="AJ360 QC checks frame quality (black frames, freezes, drops, artifacts), audio (codec, sample rate, loudness) and color range/aspect ratio. Assets failing any check are rejected, not published."
                             >
                               {nestedRow("catchUpContentFailed", "Catch-up Content Failed", altChildren[0])}
                               {nestedRow("archiveContentFailed", "Archive Content Failed", altChildren[1])}
