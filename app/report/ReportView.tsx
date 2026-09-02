@@ -2,7 +2,7 @@ import { monthRangeLabel } from "@/lib/months";
 import { formatFieldValue } from "@/lib/format";
 import { TEAMS, getTeam, type FieldConfig, type TeamConfig, type TeamData } from "@/lib/teams";
 import type { MonthlyReport, SourceEntry } from "@/lib/report";
-import GroupRow from "./GroupRow";
+import GroupRow, { InfoIcon } from "./GroupRow";
 import ExportButton from "./ExportButton";
 import InteractivePie from "./InteractivePie";
 
@@ -207,16 +207,19 @@ function GlanceCard({
   value,
   unit,
   caption,
+  infoText,
 }: {
   label: string;
   value: number;
   unit?: string;
   caption: string;
+  infoText?: string;
 }) {
   return (
     <div className="rounded-lg border-t-2 p-4" style={{ background: "rgba(0,0,0,0.15)", borderColor: ACCENT_CYAN }}>
-      <p className="mb-1 text-xs font-semibold" style={{ color: ACCENT_CYAN }}>
+      <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold" style={{ color: ACCENT_CYAN }}>
         {label}
+        {infoText && <InfoIcon text={infoText} />}
       </p>
       <p className="stat-value text-2xl font-extrabold" style={{ color: TEXT_BRIGHT }}>
         {formatFieldValue(value, unit)}
@@ -240,7 +243,12 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
       <SectionHeading title="Executive Summary" />
       <DividerLabel text="This Month at a Glance" />
       <div className="mb-5 grid grid-cols-2 gap-4 sm:grid-cols-4 print:mb-4">
-        <GlanceCard label="Total Tasks" value={totalTasksAcrossTeams(report)} caption="Across all teams this month" />
+        <GlanceCard
+          label="Total Tasks"
+          value={totalTasksAcrossTeams(report)}
+          caption="Across all teams this month"
+          infoText="Sum of every plain-number count entered across all three teams — excludes TB and hours, since those aren't the same kind of quantity as a task count."
+        />
         <GlanceCard
           label="Archived Total"
           value={totalArchived(report)}

@@ -23,7 +23,7 @@ const DETAIL_PADDING = ["py-1.5 pl-9 pr-3 text-sm", "py-1.5 pl-16 pr-3 text-sm",
  * ancestor whenever it's tall enough (a long explanation) or the icon is near the wrapper's edge.
  * Fixed-positioning it outside the DOM tree it's clipped by sidesteps that entirely.
  */
-function InfoIcon({ text }: { text: string }) {
+export function InfoIcon({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const iconRef = useRef<HTMLSpanElement>(null);
