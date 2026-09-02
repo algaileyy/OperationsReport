@@ -257,7 +257,12 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
           infoText="Completed production media — masters, assets, episodes, and project files — validated and moved into long-term storage (primarily DIVA) once a project wraps."
         />
         <GlanceCard label="QC Hours Total" value={qcHoursTotal(report)} unit=" hrs" caption="Reported this month" />
-        <GlanceCard label="Assets Circulation" value={mediaDeskActivityTotal(report)} caption="Media Desk" />
+        <GlanceCard
+          label="Assets Circulation"
+          value={mediaDeskActivityTotal(report)}
+          caption="Media Desk"
+          infoText="Assets the Media Desk circulates to Al Jazeera and external outlets."
+        />
       </div>
       {hasHighlights && (
         <>
