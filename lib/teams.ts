@@ -111,20 +111,13 @@ export const TEAMS: TeamConfig[] = [
     key: "archivingSupport",
     name: "Digital Archive & Production Support",
     accent: "aqua",
-    fields: [
-      { key: "projectFilesChecked", label: "Project files checked" },
-      { key: "textlessCleansCompleted", label: "Textless/cleans completed" },
-      { key: "revisioning", label: "Re-versioning", hideWhenZero: true },
-    ],
-    groups: [
-      {
-        key: "totalQcCompleted",
-        label: "Quality Control Completed",
-        sumKeys: ["projectFilesChecked", "textlessCleansCompleted"],
-        detailFieldKeys: ["projectFilesChecked", "textlessCleansCompleted"],
-      },
-    ],
+    fields: [{ key: "revisioning", label: "Re-versioning", hideWhenZero: true }],
     sourceBreakdowns: [
+      { key: "textlessCleansCompletedBySource", label: "Completed" },
+      { key: "textlessCleansPassedQC", label: "Passed QC" },
+      { key: "textlessCleansFailedQC", label: "Failed QC" },
+      { key: "projectFilesPassed", label: "Passed" },
+      { key: "projectFilesReceived", label: "Received" },
       { key: "archived", label: "Archived", unit: "TB" },
       { key: "storageFreed", label: "Storage Freed", unit: "TB" },
     ],

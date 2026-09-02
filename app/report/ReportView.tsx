@@ -399,13 +399,23 @@ export default function ReportView({
                         );
                       })}
                       {sourceBreakdowns
-                        .filter(
-                          (sb) =>
-                            team.key !== "mediaIngest" ||
-                            !["catchUpContentFailed", "archiveContentFailed", "catchUpContentPassed", "archiveContentPassed"].includes(
+                        .filter((sb) => {
+                          if (team.key === "mediaIngest") {
+                            return !["catchUpContentFailed", "archiveContentFailed", "catchUpContentPassed", "archiveContentPassed"].includes(
                               sb.key
-                            )
-                        )
+                            );
+                          }
+                          if (team.key === "archivingSupport") {
+                            return ![
+                              "textlessCleansCompletedBySource",
+                              "textlessCleansPassedQC",
+                              "textlessCleansFailedQC",
+                              "projectFilesPassed",
+                              "projectFilesReceived",
+                            ].includes(sb.key);
+                          }
+                          return true;
+                        })
                         .map((sb) => {
                           const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
                           const total = entries.reduce((s, e) => s + e.count, 0);
@@ -453,7 +463,7 @@ export default function ReportView({
                                 detail={entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }))}
                                 altRow={alt}
                                 unit={displayUnit()}
-                                indent
+                                level={1}
                               />
                             );
                           };
@@ -473,6 +483,109 @@ export default function ReportView({
                               {nestedRow("archiveContentFailed", "Archive Content Failed", altChildren[1])}
                               {nestedRow("catchUpContentPassed", "Catch-up Content Passed", altChildren[2])}
                               {nestedRow("archiveContentPassed", "Archive Content Passed", altChildren[3])}
+                            </GroupRow>
+                          );
+                        })()}
+                      {team.key === "archivingSupport" &&
+                        (() => {
+                          const bySource = (key: string) => {
+                            const entries: SourceEntry[] = report.sourceBreakdowns?.["archivingSupport"]?.[key] ?? [];
+                            return {
+                              total: entries.reduce((s, e) => s + e.count, 0),
+                              detail: entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count })),
+                            };
+                          };
+                          const completed = bySource("textlessCleansCompletedBySource");
+                          const passedQC = bySource("textlessCleansPassedQC");
+                          const failedQC = bySource("textlessCleansFailedQC");
+                          const filesPassed = bySource("projectFilesPassed");
+                          const filesReceived = bySource("projectFilesReceived");
+                          const textlessTotal = completed.total + passedQC.total + failedQC.total;
+                          const projectFilesTotal = filesPassed.total + filesReceived.total;
+
+                          const altQC = rowIndex++ % 2 === 1;
+                          const altTextless = rowIndex++ % 2 === 1;
+                          const altCompleted = rowIndex++ % 2 === 1;
+                          const altPassedQC = rowIndex++ % 2 === 1;
+                          const altFailedQC = rowIndex++ % 2 === 1;
+                          const altFiles = rowIndex++ % 2 === 1;
+                          const altFilesPassed = rowIndex++ % 2 === 1;
+                          const altFilesReceived = rowIndex++ % 2 === 1;
+
+                          return (
+                            <GroupRow
+                              key="qualityControlCompleted"
+                              label="Quality Control Completed"
+                              total={textlessTotal + projectFilesTotal}
+                              detail={[]}
+                              altRow={altQC}
+                              unit={displayUnit()}
+                            >
+                              <GroupRow
+                                key="textlessCleans"
+                                label="Textless/cleans"
+                                total={textlessTotal}
+                                detail={[]}
+                                altRow={altTextless}
+                                unit={displayUnit()}
+                                level={1}
+                              >
+                                <GroupRow
+                                  key="completed"
+                                  label="Completed"
+                                  total={completed.total}
+                                  detail={completed.detail}
+                                  altRow={altCompleted}
+                                  unit={displayUnit()}
+                                  level={2}
+                                />
+                                <GroupRow
+                                  key="passedQC"
+                                  label="Passed QC"
+                                  total={passedQC.total}
+                                  detail={passedQC.detail}
+                                  altRow={altPassedQC}
+                                  unit={displayUnit()}
+                                  level={2}
+                                />
+                                <GroupRow
+                                  key="failedQC"
+                                  label="Failed QC"
+                                  total={failedQC.total}
+                                  detail={failedQC.detail}
+                                  altRow={altFailedQC}
+                                  unit={displayUnit()}
+                                  level={2}
+                                />
+                              </GroupRow>
+                              <GroupRow
+                                key="projectFiles"
+                                label="Project files"
+                                total={projectFilesTotal}
+                                detail={[]}
+                                altRow={altFiles}
+                                unit={displayUnit()}
+                                level={1}
+                              >
+                                <GroupRow
+                                  key="filesPassed"
+                                  label="Passed"
+                                  total={filesPassed.total}
+                                  detail={filesPassed.detail}
+                                  altRow={altFilesPassed}
+                                  unit={displayUnit()}
+                                  level={2}
+                                />
+                                <GroupRow
+                                  key="filesReceived"
+                                  label="Received"
+                                  total={filesReceived.total}
+                                  detail={filesReceived.detail}
+                                  altRow={altFilesReceived}
+                                  unit={displayUnit()}
+                                  level={2}
+                                />
+                              </GroupRow>
                             </GroupRow>
                           );
                         })()}

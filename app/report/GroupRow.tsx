@@ -10,13 +10,18 @@ const DETAIL_BG = "rgba(0,0,0,0.12)";
 
 type DetailItem = { label: string; value: number };
 
+/** Label/detail padding at each nesting depth — Tailwind needs literal class names, so this is a
+ * small fixed lookup rather than a computed string. Only 0-2 are used (three levels deep, max). */
+const LABEL_PADDING = ["px-3 py-2 text-sm", "py-2 pl-9 pr-3 text-sm", "py-2 pl-16 pr-3 text-sm"];
+const DETAIL_PADDING = ["py-1.5 pl-9 pr-3 text-sm", "py-1.5 pl-16 pr-3 text-sm", "py-1.5 pl-24 pr-3 text-sm"];
+
 export default function GroupRow({
   label,
   total,
   detail,
   altRow,
   unit,
-  indent = false,
+  level = 0,
   infoText,
   children,
 }: {
@@ -25,9 +30,9 @@ export default function GroupRow({
   detail: DetailItem[];
   altRow: boolean;
   unit?: string;
-  /** Renders the header and detail rows one level further right — for a GroupRow nested inside
-   * another GroupRow's expanded state. */
-  indent?: boolean;
+  /** Nesting depth (0 = top-level) — renders the header and detail rows further right at each
+   * level, for a GroupRow nested inside another GroupRow's expanded state. */
+  level?: number;
   /** Shows a white info icon next to the label with this text in a hover tooltip. */
   infoText?: string;
   /** Extra rows (typically nested GroupRows) shown after `detail` while this row is open. */
@@ -44,7 +49,7 @@ export default function GroupRow({
         className="cursor-pointer select-none"
         style={{ background: altRow ? ROW_ALT : "transparent" }}
       >
-        <td className={indent ? "py-2 pl-9 pr-3 text-sm" : "px-3 py-2 text-sm"}>
+        <td className={LABEL_PADDING[level] ?? LABEL_PADDING[LABEL_PADDING.length - 1]}>
           <span className="inline-flex items-center gap-2 font-bold" style={{ color: TEXT_BRIGHT }}>
             <span className="inline-block w-4 text-base" style={{ color: "#5fd4f4" }}>
               {open ? "▾" : "▸"}
@@ -87,7 +92,7 @@ export default function GroupRow({
         <>
           {detail.map((d) => (
             <tr key={d.label} style={{ background: DETAIL_BG }}>
-              <td className={indent ? "py-1.5 pl-16 pr-3 text-sm" : "py-1.5 pl-9 pr-3 text-sm"} style={{ color: TEXT_DETAIL }}>
+              <td className={DETAIL_PADDING[level] ?? DETAIL_PADDING[DETAIL_PADDING.length - 1]} style={{ color: TEXT_DETAIL }}>
                 {d.label}
               </td>
               <td className="px-3 py-1.5 text-sm" style={{ color: TEXT_DETAIL }}>
