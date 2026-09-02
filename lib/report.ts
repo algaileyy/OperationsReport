@@ -23,6 +23,10 @@ export type MonthlyReport = {
   highlights: ReportHighlights;
   /** Report-wide note not tied to any one team — shown first in the Executive Summary's Notes list. */
   generalNotes: string;
+  /** Replaces the "Total Tasks" glance card's usual auto-sum across every team when set — 0 means
+   * unset (use the auto-calculated total), same "0 = nothing entered" convention every other
+   * number field already uses. */
+  totalTasksOverride: number;
 };
 
 /** Certain breakdowns start with specific sources pre-listed (rather than left for someone to type
@@ -63,6 +67,7 @@ export function emptyReport(): MonthlyReport {
     sourceBreakdowns,
     highlights: { mainAchievements: "", challenges: "", newInitiatives: "" },
     generalNotes: "",
+    totalTasksOverride: 0,
   };
 }
 
@@ -74,6 +79,7 @@ export function normalizeReport(raw: unknown): MonthlyReport {
     sourceBreakdowns?: Record<string, Record<string, unknown>>;
     highlights?: Record<string, unknown>;
     generalNotes?: unknown;
+    totalTasksOverride?: unknown;
   } | null;
   const teamsSrc = src?.teams ?? {};
   const notesSrc = src?.notes ?? {};
@@ -120,11 +126,14 @@ export function normalizeReport(raw: unknown): MonthlyReport {
     newInitiatives: typeof highlightsSrc.newInitiatives === "string" ? highlightsSrc.newInitiatives : "",
   };
 
+  const totalTasksOverrideN = Number(src?.totalTasksOverride);
+
   return {
     teams,
     notes,
     sourceBreakdowns,
     highlights,
     generalNotes: typeof src?.generalNotes === "string" ? src.generalNotes : "",
+    totalTasksOverride: Number.isFinite(totalTasksOverrideN) && totalTasksOverrideN >= 0 ? totalTasksOverrideN : 0,
   };
 }

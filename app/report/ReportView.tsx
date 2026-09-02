@@ -92,8 +92,10 @@ function shadeSteps(hex: string, count: number): string[] {
   });
 }
 
-/** Grand total of every unitless count across all teams — plain fields plus unitless source-breakdown totals. */
+/** Grand total of every unitless count across all teams — plain fields plus unitless source-breakdown
+ * totals — unless a manual override was entered on /input, which takes over entirely. */
 function totalTasksAcrossTeams(report: MonthlyReport): number {
+  if (report.totalTasksOverride) return report.totalTasksOverride;
   let total = 0;
   for (const team of TEAMS) {
     const data = report.teams[team.key] ?? {};

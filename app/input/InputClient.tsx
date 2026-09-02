@@ -153,6 +153,10 @@ export default function InputClient({
     setData((d) => ({ ...d, generalNotes: value }));
   }
 
+  function setTotalTasksOverride(value: string) {
+    setData((d) => ({ ...d, totalTasksOverride: value === "" ? 0 : Number(value) }));
+  }
+
   function setNote(teamKey: string, value: string) {
     setData((d) => ({
       ...d,
@@ -446,6 +450,25 @@ export default function InputClient({
                   className="rounded-md border px-3 py-2 text-sm"
                   style={inputStyle}
                 />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                  Total Tasks Override
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={data.totalTasksOverride || ""}
+                  onChange={(e) => setTotalTasksOverride(e.target.value)}
+                  placeholder="Leave blank to auto-calculate from all teams' numbers below"
+                  className="w-full max-w-xs rounded-md border px-3 py-2 text-sm"
+                  style={inputStyle}
+                />
+                <span className="text-xs" style={{ color: "var(--ink-muted)" }}>
+                  Replaces the &quot;Total Tasks&quot; glance card on the report. Leave blank to keep
+                  it auto-calculated.
+                </span>
               </label>
             </div>
           </section>
