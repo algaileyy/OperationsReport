@@ -70,6 +70,12 @@ function hslToHex(h: number, s: number, l: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
+/** Table VALUE cells label plain counts as "Assets" (e.g. "186 Assets") — a field/group/breakdown
+ * with its own unit (TB, GB, hours) keeps that instead, since it isn't a comparable asset count. */
+function displayUnit(configUnit?: string): string {
+  return configUnit ?? " Assets";
+}
+
 /**
  * N distinct shades of one team's accent hue. Lightness is spread widely
  * (not a tight tint-toward-white ramp) and alternates a small hue nudge so
@@ -382,14 +388,23 @@ export default function ReportView({
                         const detail = group.detailFieldKeys.map((k) => ({ label: fieldLabel(k), value: teamData[k] ?? 0 }));
                         const alt = rowIndex++ % 2 === 1;
                         return (
-                          <GroupRow key={group.key} label={group.label} total={total} detail={detail} altRow={alt} unit={group.unit} />
+                          <GroupRow
+                            key={group.key}
+                            label={group.label}
+                            total={total}
+                            detail={detail}
+                            altRow={alt}
+                            unit={displayUnit(group.unit)}
+                          />
                         );
                       })}
                       {sourceBreakdowns
                         .filter(
                           (sb) =>
                             team.key !== "mediaIngest" ||
-                            (sb.key !== "catchUpContentFailed" && sb.key !== "archiveContentFailed")
+                            !["catchUpContentFailed", "archiveContentFailed", "catchUpContentPassed", "archiveContentPassed"].includes(
+                              sb.key
+                            )
                         )
                         .map((sb) => {
                           const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
@@ -397,7 +412,14 @@ export default function ReportView({
                           const detail = entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
                           const alt = rowIndex++ % 2 === 1;
                           return (
-                            <GroupRow key={sb.key} label={sb.label} total={total} detail={detail} altRow={alt} unit={sb.unit} />
+                            <GroupRow
+                              key={sb.key}
+                              label={sb.label}
+                              total={total}
+                              detail={detail}
+                              altRow={alt}
+                              unit={displayUnit(sb.unit)}
+                            />
                           );
                         })}
                       {plainFields
@@ -409,44 +431,42 @@ export default function ReportView({
                               <Td>
                                 <strong style={{ color: TEXT_BRIGHT }}>{field.label}</strong>
                               </Td>
-                              <Td>{formatFieldValue(teamData[field.key] ?? 0, field.unit)}</Td>
+                              <Td>{formatFieldValue(teamData[field.key] ?? 0, displayUnit(field.unit))}</Td>
                             </tr>
                           );
                         })}
                       {team.key === "mediaIngest" &&
                         (() => {
                           const qcValue = teamData["qualityControlCompleted"] ?? 0;
-                          const catchUpFailed: SourceEntry[] =
-                            report.sourceBreakdowns?.["mediaIngest"]?.["catchUpContentFailed"] ?? [];
-                          const archiveFailed: SourceEntry[] =
-                            report.sourceBreakdowns?.["mediaIngest"]?.["archiveContentFailed"] ?? [];
+                          const nestedRow = (key: string, label: string, alt: boolean) => {
+                            const entries: SourceEntry[] = report.sourceBreakdowns?.["mediaIngest"]?.[key] ?? [];
+                            return (
+                              <GroupRow
+                                key={key}
+                                label={label}
+                                total={entries.reduce((s, e) => s + e.count, 0)}
+                                detail={entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }))}
+                                altRow={alt}
+                                unit={displayUnit()}
+                                indent
+                              />
+                            );
+                          };
                           const altParent = rowIndex++ % 2 === 1;
-                          const altChild1 = rowIndex++ % 2 === 1;
-                          const altChild2 = rowIndex++ % 2 === 1;
+                          const altChildren = [0, 1, 2, 3].map(() => rowIndex++ % 2 === 1);
                           return (
                             <GroupRow
                               key="qualityControlCompleted"
-                              label="Quality Control Completed (Hours)"
+                              label={fieldLabel("qualityControlCompleted")}
                               total={qcValue}
                               detail={[]}
                               altRow={altParent}
+                              unit=" H"
                             >
-                              <GroupRow
-                                key="catchUpContentFailedNested"
-                                label="Catch-up Content Failed"
-                                total={catchUpFailed.reduce((s, e) => s + e.count, 0)}
-                                detail={catchUpFailed.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }))}
-                                altRow={altChild1}
-                                indent
-                              />
-                              <GroupRow
-                                key="archiveContentFailedNested"
-                                label="Archive Content Failed"
-                                total={archiveFailed.reduce((s, e) => s + e.count, 0)}
-                                detail={archiveFailed.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }))}
-                                altRow={altChild2}
-                                indent
-                              />
+                              {nestedRow("catchUpContentFailed", "Catch-up Content Failed", altChildren[0])}
+                              {nestedRow("archiveContentFailed", "Archive Content Failed", altChildren[1])}
+                              {nestedRow("catchUpContentPassed", "Catch-up Content Passed", altChildren[2])}
+                              {nestedRow("archiveContentPassed", "Archive Content Passed", altChildren[3])}
                             </GroupRow>
                           );
                         })()}
