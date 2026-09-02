@@ -128,6 +128,7 @@ export const TEAMS: TeamConfig[] = [
       { key: "textlessCleansReceived", label: "Received QC", segmentSlot: { segment: "Textless/Cleans QC", position: "start" } },
       { key: "textlessCleansInProgress", label: "QC in Progress", segmentSlot: { segment: "Textless/Cleans QC", position: "end" } },
       { key: "textlessCleansSize", label: "Size", unit: "GB", segmentSlot: { segment: "Textless/Cleans QC", position: "end" } },
+      { key: "textlessCleansHours", label: "Hours of QC", unit: "H", segmentSlot: { segment: "Textless/Cleans QC", position: "end" } },
     ],
     sourceBreakdowns: [
       { key: "textlessCleansPassedQC", label: "Passed QC", segment: "Textless/Cleans QC" },

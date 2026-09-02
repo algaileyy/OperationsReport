@@ -572,6 +572,7 @@ export default function ReportView({
                           const textlessReceived = teamData["textlessCleansReceived"] ?? 0;
                           const textlessInProgress = teamData["textlessCleansInProgress"] ?? 0;
                           const textlessSize = teamData["textlessCleansSize"] ?? 0;
+                          const textlessHours = teamData["textlessCleansHours"] ?? 0;
                           const textlessTotal = textlessReceived;
                           const rushesTotal = rushesReceived.total + rushesPassedQC.total + rushesFailedQC.total;
                           const projectFilesTotal = filesPassed.total + filesReceived.total;
@@ -592,6 +593,7 @@ export default function ReportView({
                                     { key: "failedQC", label: "Failed QC", ...failedQC },
                                     { key: "qcInProgress", label: "QC in Progress", total: textlessInProgress, detail: [] },
                                     { key: "textlessSize", label: "Size", total: textlessSize, unit: "GB", detail: [] },
+                                    { key: "textlessHours", label: "Hours of QC", total: textlessHours, unit: "H", detail: [] },
                                   ],
                                 },
                                 {
