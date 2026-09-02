@@ -420,7 +420,7 @@ export default function ReportView({
                               altRow={alt}
                               unit={displayUnit(sb.unit)}
                               infoText={
-                                sb.key === "badgesIngested"
+                                sb.key === "artworkAndBadgesIngested"
                                   ? "Badges get burnt onto show and movie artwork using a tool operated by Media Ingest team."
                                   : undefined
                               }

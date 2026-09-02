@@ -28,8 +28,7 @@ export type MonthlyReport = {
 /** Certain Media Ingest breakdowns start with specific sources pre-listed (rather than left for
  * someone to type from scratch) so the naming stays exactly consistent across months. */
 const MEDIA_INGEST_STARTER_SOURCES: Record<string, string[]> = {
-  artworkIngested: ["Show Artwork", "Movie Artwork", "Episodic Thumbnails"],
-  badgesIngested: ["Shows", "Movies"],
+  artworkAndBadgesIngested: ["Show Artwork", "Movie Artwork", "Shows Badges", "Movie Badges"],
 };
 
 /** Appends whichever starter sources aren't already present (by name, case-insensitive) — applied
