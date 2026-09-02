@@ -23,6 +23,7 @@ export default function GroupRow({
   unit,
   level = 0,
   infoText,
+  hasChildren = false,
   children,
 }: {
   label: string;
@@ -35,24 +36,30 @@ export default function GroupRow({
   level?: number;
   /** Shows a white info icon next to the label with this text in a hover tooltip. */
   infoText?: string;
+  /** Whether `children` actually has anything in it — `detail.length > 0` alone can't tell, since
+   * a parent-of-parents row has no detail of its own, only nested GroupRows. Determines whether the
+   * expand arrow (and the ability to open the row at all) is shown. */
+  hasChildren?: boolean;
   /** Extra rows (typically nested GroupRows) shown after `detail` while this row is open. */
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const expandable = detail.length > 0 || hasChildren;
+  const isOpen = expandable && open;
 
   return (
     <>
       <tr
-        onClick={() => setOpen((o) => !o)}
-        role="button"
-        aria-expanded={open}
-        className="cursor-pointer select-none"
+        onClick={expandable ? () => setOpen((o) => !o) : undefined}
+        role={expandable ? "button" : undefined}
+        aria-expanded={expandable ? isOpen : undefined}
+        className={expandable ? "cursor-pointer select-none" : undefined}
         style={{ background: altRow ? ROW_ALT : "transparent" }}
       >
         <td className={LABEL_PADDING[level] ?? LABEL_PADDING[LABEL_PADDING.length - 1]}>
           <span className="inline-flex items-center gap-2 font-bold" style={{ color: TEXT_BRIGHT }}>
             <span className="inline-block w-4 text-base" style={{ color: "#5fd4f4" }}>
-              {open ? "▾" : "▸"}
+              {expandable ? (isOpen ? "▾" : "▸") : ""}
             </span>
             {label}
             {infoText && (
@@ -88,7 +95,7 @@ export default function GroupRow({
           {formatFieldValue(total, unit)}
         </td>
       </tr>
-      {open && (
+      {isOpen && (
         <>
           {detail.map((d) => (
             <tr key={d.label} style={{ background: DETAIL_BG }}>

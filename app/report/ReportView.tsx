@@ -274,15 +274,18 @@ function TeamPie({
   const accent = ACCENT_HEX[team.accent];
   // Only unitless values are comparable counts and can share one pie; a
   // value with a unit (e.g. TB) isn't the same kind of quantity, so it's
-  // shown as its own callout instead of a slice.
-  const visibleFields = team.fields.filter((f) => !(f.hideWhenZero && (data[f.key] ?? 0) === 0));
+  // shown as its own callout instead of a slice. Anything at 0 is dropped
+  // entirely, same as everywhere else in the report.
+  const nonZeroTotals = sourceTotals.filter((s) => s.value !== 0);
   const pieFields = [
-    ...visibleFields.filter((f) => !f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0 })),
-    ...sourceTotals.filter((s) => !s.unit),
+    ...team.fields.filter((f) => !f.unit && (data[f.key] ?? 0) !== 0).map((f) => ({ label: f.label, value: data[f.key] ?? 0 })),
+    ...nonZeroTotals.filter((s) => !s.unit),
   ];
   const calloutFields = [
-    ...visibleFields.filter((f) => f.unit).map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit })),
-    ...sourceTotals.filter((s) => s.unit),
+    ...team.fields
+      .filter((f) => f.unit && (data[f.key] ?? 0) !== 0)
+      .map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit })),
+    ...nonZeroTotals.filter((s) => s.unit),
   ];
 
   const colors = shadeSteps(accent, pieFields.length);
@@ -301,6 +304,60 @@ function TeamPie({
       </div>
       {pieFields.length > 0 && <InteractivePie fields={pieFields} colors={colors} />}
     </div>
+  );
+}
+
+/** A row that may itself contain nested rows (Media Ingest's QC Hours, Digital Archive's QC
+ * Completed / Production Support Activities) — built once as plain data, then pruned and rendered
+ * generically so the "hide anything at 0" and "no arrow with nothing to expand" rules only need to
+ * be implemented in one place instead of at every nesting site. */
+type TreeNode = {
+  key: string;
+  label: string;
+  total: number;
+  unit?: string;
+  infoText?: string;
+  detail?: { label: string; value: number }[];
+  children?: TreeNode[];
+};
+
+/** Drops zero-valued detail entries and nodes, keeping a parent only if its own total is non-zero
+ * or it still has surviving children (a parent's total isn't always the sum of its children — Media
+ * Ingest's QC Hours total is its own entered value, independent of the Failed/Passed counts nested
+ * under it). */
+function pruneZero(nodes: TreeNode[]): TreeNode[] {
+  return nodes
+    .map((n) => ({
+      ...n,
+      detail: n.detail?.filter((d) => d.value !== 0),
+      children: n.children ? pruneZero(n.children) : undefined,
+    }))
+    .filter((n) => n.total !== 0 || (n.children?.length ?? 0) > 0);
+}
+
+function RowTree({ nodes, level, seed }: { nodes: TreeNode[]; level: number; seed: { i: number } }) {
+  return (
+    <>
+      {nodes.map((n) => {
+        const alt = seed.i++ % 2 === 1;
+        const hasChildren = (n.children?.length ?? 0) > 0;
+        return (
+          <GroupRow
+            key={n.key}
+            label={n.label}
+            total={n.total}
+            detail={n.detail ?? []}
+            altRow={alt}
+            unit={n.unit ?? displayUnit()}
+            level={level}
+            infoText={n.infoText}
+            hasChildren={hasChildren}
+          >
+            {hasChildren && <RowTree nodes={n.children!} level={level + 1} seed={seed} />}
+          </GroupRow>
+        );
+      })}
+    </>
   );
 }
 
@@ -352,9 +409,7 @@ export default function ReportView({
             const teamData = report.teams[team.key] ?? {};
             const groups = team.groups ?? [];
             const groupedKeys = new Set(groups.flatMap((g) => g.detailFieldKeys));
-            const plainFields = team.fields.filter(
-              (f) => !groupedKeys.has(f.key) && !(f.hideWhenZero && (teamData[f.key] ?? 0) === 0)
-            );
+            const plainFields = team.fields.filter((f) => !groupedKeys.has(f.key) && (teamData[f.key] ?? 0) !== 0);
             const fieldLabel = (key: string) => team.fields.find((f) => f.key === key)?.label ?? key;
             const note = report.notes?.[team.key];
             const sourceBreakdowns = team.sourceBreakdowns ?? [];
@@ -385,7 +440,10 @@ export default function ReportView({
                     <tbody>
                       {groups.map((group) => {
                         const total = group.sumKeys.reduce((s, k) => s + (teamData[k] ?? 0), 0);
-                        const detail = group.detailFieldKeys.map((k) => ({ label: fieldLabel(k), value: teamData[k] ?? 0 }));
+                        if (total === 0) return null;
+                        const detail = group.detailFieldKeys
+                          .map((k) => ({ label: fieldLabel(k), value: teamData[k] ?? 0 }))
+                          .filter((d) => d.value !== 0);
                         const alt = rowIndex++ % 2 === 1;
                         return (
                           <GroupRow
@@ -425,7 +483,10 @@ export default function ReportView({
                         .map((sb) => {
                           const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
                           const total = entries.reduce((s, e) => s + e.count, 0);
-                          const detail = entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
+                          if (total === 0) return null;
+                          const detail = entries
+                            .filter((e) => e.count !== 0)
+                            .map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
                           const alt = rowIndex++ % 2 === 1;
                           return (
                             <GroupRow
@@ -458,39 +519,33 @@ export default function ReportView({
                         })}
                       {team.key === "mediaIngest" &&
                         (() => {
-                          const qcValue = teamData["qualityControlCompleted"] ?? 0;
-                          const nestedRow = (key: string, label: string, alt: boolean) => {
+                          const bySource = (key: string) => {
                             const entries: SourceEntry[] = report.sourceBreakdowns?.["mediaIngest"]?.[key] ?? [];
-                            return (
-                              <GroupRow
-                                key={key}
-                                label={label}
-                                total={entries.reduce((s, e) => s + e.count, 0)}
-                                detail={entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }))}
-                                altRow={alt}
-                                unit={displayUnit()}
-                                level={1}
-                              />
-                            );
+                            return {
+                              total: entries.reduce((s, e) => s + e.count, 0),
+                              detail: entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count })),
+                            };
                           };
-                          const altParent = rowIndex++ % 2 === 1;
-                          const altChildren = [0, 1, 2, 3].map(() => rowIndex++ % 2 === 1);
-                          return (
-                            <GroupRow
-                              key="qualityControlCompleted"
-                              label={fieldLabel("qualityControlCompleted")}
-                              total={qcValue}
-                              detail={[]}
-                              altRow={altParent}
-                              unit=" H"
-                              infoText="Quality control checks frame quality (black frames, freezes, drops, artifacts), audio (codec, sample rate, loudness) and color range/aspect ratio. Assets failing any check are rejected, not published."
-                            >
-                              {nestedRow("catchUpContentFailed", "Catch-up Content Failed", altChildren[0])}
-                              {nestedRow("archiveContentFailed", "Archive Content Failed", altChildren[1])}
-                              {nestedRow("catchUpContentPassed", "Catch-up Content Passed", altChildren[2])}
-                              {nestedRow("archiveContentPassed", "Archive Content Passed", altChildren[3])}
-                            </GroupRow>
-                          );
+                          const nodes = pruneZero([
+                            {
+                              key: "qualityControlCompleted",
+                              label: fieldLabel("qualityControlCompleted"),
+                              total: teamData["qualityControlCompleted"] ?? 0,
+                              unit: " H",
+                              infoText:
+                                "Quality control checks frame quality (black frames, freezes, drops, artifacts), audio (codec, sample rate, loudness) and color range/aspect ratio. Assets failing any check are rejected, not published.",
+                              children: [
+                                { key: "catchUpContentFailed", label: "Catch-up Content Failed", ...bySource("catchUpContentFailed") },
+                                { key: "archiveContentFailed", label: "Archive Content Failed", ...bySource("archiveContentFailed") },
+                                { key: "catchUpContentPassed", label: "Catch-up Content Passed", ...bySource("catchUpContentPassed") },
+                                { key: "archiveContentPassed", label: "Archive Content Passed", ...bySource("archiveContentPassed") },
+                              ],
+                            },
+                          ]);
+                          const seed = { i: rowIndex };
+                          const rendered = <RowTree nodes={nodes} level={0} seed={seed} />;
+                          rowIndex = seed.i;
+                          return rendered;
                         })()}
                       {team.key === "archivingSupport" &&
                         (() => {
@@ -517,174 +572,58 @@ export default function ReportView({
                           const projectFilesTotal = filesPassed.total + filesReceived.total;
                           const productionSupportTotal = revisioning.total + editing.total + upscaling.total;
 
-                          const altQC = rowIndex++ % 2 === 1;
-                          const altTextless = rowIndex++ % 2 === 1;
-                          const altCompleted = rowIndex++ % 2 === 1;
-                          const altPassedQC = rowIndex++ % 2 === 1;
-                          const altFailedQC = rowIndex++ % 2 === 1;
-                          const altRushes = rowIndex++ % 2 === 1;
-                          const altRushesReceived = rowIndex++ % 2 === 1;
-                          const altRushesPassedQC = rowIndex++ % 2 === 1;
-                          const altRushesFailedQC = rowIndex++ % 2 === 1;
-                          const altFiles = rowIndex++ % 2 === 1;
-                          const altFilesPassed = rowIndex++ % 2 === 1;
-                          const altFilesReceived = rowIndex++ % 2 === 1;
-                          const altSupport = rowIndex++ % 2 === 1;
-                          const altRevisioning = rowIndex++ % 2 === 1;
-                          const altEditing = rowIndex++ % 2 === 1;
-                          const altUpscaling = rowIndex++ % 2 === 1;
-
-                          return (
-                            <>
-                            <GroupRow
-                              key="qualityControlCompleted"
-                              label="Quality Control Completed"
-                              total={textlessTotal + rushesTotal + projectFilesTotal}
-                              detail={[]}
-                              altRow={altQC}
-                              unit={displayUnit()}
-                            >
-                              <GroupRow
-                                key="textlessCleans"
-                                label="Textless/cleans"
-                                total={textlessTotal}
-                                detail={[]}
-                                altRow={altTextless}
-                                unit={displayUnit()}
-                                level={1}
-                              >
-                                <GroupRow
-                                  key="completed"
-                                  label="Completed"
-                                  total={completed.total}
-                                  detail={completed.detail}
-                                  altRow={altCompleted}
-                                  unit={displayUnit()}
-                                  level={2}
-                                />
-                                <GroupRow
-                                  key="passedQC"
-                                  label="Passed QC"
-                                  total={passedQC.total}
-                                  detail={passedQC.detail}
-                                  altRow={altPassedQC}
-                                  unit={displayUnit()}
-                                  level={2}
-                                />
-                                <GroupRow
-                                  key="failedQC"
-                                  label="Failed QC"
-                                  total={failedQC.total}
-                                  detail={failedQC.detail}
-                                  altRow={altFailedQC}
-                                  unit={displayUnit()}
-                                  level={2}
-                                />
-                              </GroupRow>
-                              <GroupRow
-                                key="rushes"
-                                label="Rushes"
-                                total={rushesTotal}
-                                detail={[]}
-                                altRow={altRushes}
-                                unit={displayUnit()}
-                                level={1}
-                              >
-                                <GroupRow
-                                  key="rushesReceived"
-                                  label="Received"
-                                  total={rushesReceived.total}
-                                  detail={rushesReceived.detail}
-                                  altRow={altRushesReceived}
-                                  unit={displayUnit()}
-                                  level={2}
-                                />
-                                <GroupRow
-                                  key="rushesPassedQC"
-                                  label="Passed QC"
-                                  total={rushesPassedQC.total}
-                                  detail={rushesPassedQC.detail}
-                                  altRow={altRushesPassedQC}
-                                  unit={displayUnit()}
-                                  level={2}
-                                />
-                                <GroupRow
-                                  key="rushesFailedQC"
-                                  label="Failed QC"
-                                  total={rushesFailedQC.total}
-                                  detail={rushesFailedQC.detail}
-                                  altRow={altRushesFailedQC}
-                                  unit={displayUnit()}
-                                  level={2}
-                                />
-                              </GroupRow>
-                              <GroupRow
-                                key="projectFiles"
-                                label="Project files"
-                                total={projectFilesTotal}
-                                detail={[]}
-                                altRow={altFiles}
-                                unit={displayUnit()}
-                                level={1}
-                              >
-                                <GroupRow
-                                  key="filesPassed"
-                                  label="Passed"
-                                  total={filesPassed.total}
-                                  detail={filesPassed.detail}
-                                  altRow={altFilesPassed}
-                                  unit={displayUnit()}
-                                  level={2}
-                                />
-                                <GroupRow
-                                  key="filesReceived"
-                                  label="Received"
-                                  total={filesReceived.total}
-                                  detail={filesReceived.detail}
-                                  altRow={altFilesReceived}
-                                  unit={displayUnit()}
-                                  level={2}
-                                />
-                              </GroupRow>
-                            </GroupRow>
-                            <GroupRow
-                              key="productionSupportActivities"
-                              label="Production Support Activities"
-                              total={productionSupportTotal}
-                              detail={[]}
-                              altRow={altSupport}
-                              unit={displayUnit()}
-                            >
-                              <GroupRow
-                                key="revisioningBySource"
-                                label="Re-versioning"
-                                total={revisioning.total}
-                                detail={revisioning.detail}
-                                altRow={altRevisioning}
-                                unit={displayUnit()}
-                                level={1}
-                              />
-                              <GroupRow
-                                key="editingBySource"
-                                label="Editing"
-                                total={editing.total}
-                                detail={editing.detail}
-                                altRow={altEditing}
-                                unit={displayUnit()}
-                                level={1}
-                              />
-                              <GroupRow
-                                key="upscalingBySource"
-                                label="Upscaling"
-                                total={upscaling.total}
-                                detail={upscaling.detail}
-                                altRow={altUpscaling}
-                                unit={displayUnit()}
-                                level={1}
-                              />
-                            </GroupRow>
-                            </>
-                          );
+                          const nodes = pruneZero([
+                            {
+                              key: "qualityControlCompleted",
+                              label: "Quality Control Completed",
+                              total: textlessTotal + rushesTotal + projectFilesTotal,
+                              children: [
+                                {
+                                  key: "textlessCleans",
+                                  label: "Textless/cleans",
+                                  total: textlessTotal,
+                                  children: [
+                                    { key: "completed", label: "Completed", ...completed },
+                                    { key: "passedQC", label: "Passed QC", ...passedQC },
+                                    { key: "failedQC", label: "Failed QC", ...failedQC },
+                                  ],
+                                },
+                                {
+                                  key: "rushes",
+                                  label: "Rushes",
+                                  total: rushesTotal,
+                                  children: [
+                                    { key: "rushesReceived", label: "Received", ...rushesReceived },
+                                    { key: "rushesPassedQC", label: "Passed QC", ...rushesPassedQC },
+                                    { key: "rushesFailedQC", label: "Failed QC", ...rushesFailedQC },
+                                  ],
+                                },
+                                {
+                                  key: "projectFiles",
+                                  label: "Project files",
+                                  total: projectFilesTotal,
+                                  children: [
+                                    { key: "filesPassed", label: "Passed", ...filesPassed },
+                                    { key: "filesReceived", label: "Received", ...filesReceived },
+                                  ],
+                                },
+                              ],
+                            },
+                            {
+                              key: "productionSupportActivities",
+                              label: "Production Support Activities",
+                              total: productionSupportTotal,
+                              children: [
+                                { key: "revisioningBySource", label: "Re-versioning", ...revisioning },
+                                { key: "editingBySource", label: "Editing", ...editing },
+                                { key: "upscalingBySource", label: "Upscaling", ...upscaling },
+                              ],
+                            },
+                          ]);
+                          const seed = { i: rowIndex };
+                          const rendered = <RowTree nodes={nodes} level={0} seed={seed} />;
+                          rowIndex = seed.i;
+                          return rendered;
                         })()}
                     </tbody>
                   </table>
