@@ -28,7 +28,7 @@ export type MonthlyReport = {
 /** Recurring Media Ingest categories that aren't tied to one bureau/channel — seeded as starter
  * rows (rather than left for someone to type from scratch each month) so the naming stays exactly
  * consistent across months for the by-source totals to merge correctly. */
-const MEDIA_INGEST_STARTER_SOURCES = ["Artwork & Badging", "Thumbnails"];
+const MEDIA_INGEST_STARTER_SOURCES = ["Artwork", "Bagging", "Thumbnails"];
 const MEDIA_INGEST_SEEDED_BREAKDOWNS = new Set([
   "catchUpContentReceived",
   "archiveContentReceived",
