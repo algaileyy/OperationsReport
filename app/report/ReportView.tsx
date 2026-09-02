@@ -124,32 +124,6 @@ function qcHoursTotal(report: MonthlyReport): number {
   return report.teams["mediaIngest"]?.["qualityControlCompleted"] ?? 0;
 }
 
-function mergeSourceEntries(...lists: SourceEntry[][]): { source: string; count: number }[] {
-  const totals = new Map<string, number>();
-  for (const list of lists) {
-    for (const e of list) {
-      totals.set(e.source, (totals.get(e.source) ?? 0) + e.count);
-    }
-  }
-  return Array.from(totals.entries()).map(([source, count]) => ({ source, count }));
-}
-
-/** Media Ingest's per-type "Total" rows are derived (Ingested + Failed, by source) rather than
- * entered separately, so they can never drift from the numbers already tracked by source. */
-function catchUpContentTotalBySource(report: MonthlyReport) {
-  const ingested = report.sourceBreakdowns?.["mediaIngest"]?.["ingestedCatchUpContent"] ?? [];
-  const failed = report.sourceBreakdowns?.["mediaIngest"]?.["catchUpContentFailed"] ?? [];
-  return mergeSourceEntries(ingested, failed);
-}
-
-function archiveContentTotalBySource(report: MonthlyReport) {
-  const ingested = report.sourceBreakdowns?.["mediaIngest"]?.["ingestedArchiveContent"] ?? [];
-  const failed = report.sourceBreakdowns?.["mediaIngest"]?.["archiveContentFailed"] ?? [];
-  return mergeSourceEntries(ingested, failed);
-}
-
-const MEDIA_INGEST_SIZE_KEYS = new Set(["catchUpContentSize", "archiveContentSize"]);
-
 function SectionHeading({ n, title }: { n?: number; title: string }) {
   return (
     <h2 className="mb-3 flex items-baseline gap-2 text-lg font-bold" style={{ color: TEXT_BRIGHT }}>
@@ -411,53 +385,15 @@ export default function ReportView({
                           <GroupRow key={group.key} label={group.label} total={total} detail={detail} altRow={alt} unit={group.unit} />
                         );
                       })}
-                      {sourceBreakdowns
-                        .filter((sb) => team.key !== "mediaIngest" || !MEDIA_INGEST_SIZE_KEYS.has(sb.key))
-                        .map((sb) => {
-                          const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
-                          const total = entries.reduce((s, e) => s + e.count, 0);
-                          const detail = entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
-                          const alt = rowIndex++ % 2 === 1;
-                          return (
-                            <GroupRow key={sb.key} label={sb.label} total={total} detail={detail} altRow={alt} unit={sb.unit} />
-                          );
-                        })}
-                      {team.key === "mediaIngest" &&
-                        (() => {
-                          const catchUpTotal = catchUpContentTotalBySource(report);
-                          const archiveTotal = archiveContentTotalBySource(report);
-                          const altA = rowIndex++ % 2 === 1;
-                          const altB = rowIndex++ % 2 === 1;
-                          return (
-                            <>
-                              <GroupRow
-                                key="catchUpContentTotal"
-                                label="Catch-up Content Total"
-                                total={catchUpTotal.reduce((s, p) => s + p.count, 0)}
-                                detail={catchUpTotal.map((p) => ({ label: p.source || "(unnamed source)", value: p.count }))}
-                                altRow={altA}
-                              />
-                              <GroupRow
-                                key="archiveContentTotal"
-                                label="Archive Content Total"
-                                total={archiveTotal.reduce((s, p) => s + p.count, 0)}
-                                detail={archiveTotal.map((p) => ({ label: p.source || "(unnamed source)", value: p.count }))}
-                                altRow={altB}
-                              />
-                            </>
-                          );
-                        })()}
-                      {sourceBreakdowns
-                        .filter((sb) => team.key === "mediaIngest" && MEDIA_INGEST_SIZE_KEYS.has(sb.key))
-                        .map((sb) => {
-                          const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
-                          const total = entries.reduce((s, e) => s + e.count, 0);
-                          const detail = entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
-                          const alt = rowIndex++ % 2 === 1;
-                          return (
-                            <GroupRow key={sb.key} label={sb.label} total={total} detail={detail} altRow={alt} unit={sb.unit} />
-                          );
-                        })}
+                      {sourceBreakdowns.map((sb) => {
+                        const entries: SourceEntry[] = report.sourceBreakdowns?.[team.key]?.[sb.key] ?? [];
+                        const total = entries.reduce((s, e) => s + e.count, 0);
+                        const detail = entries.map((e) => ({ label: e.source || "(unnamed source)", value: e.count }));
+                        const alt = rowIndex++ % 2 === 1;
+                        return (
+                          <GroupRow key={sb.key} label={sb.label} total={total} detail={detail} altRow={alt} unit={sb.unit} />
+                        );
+                      })}
                       {plainFields.map((field) => {
                         const alt = rowIndex++ % 2 === 1;
                         return (
