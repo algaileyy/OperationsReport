@@ -281,12 +281,15 @@ function TeamPie({
     ...team.fields.filter((f) => !f.unit && (data[f.key] ?? 0) !== 0).map((f) => ({ label: f.label, value: data[f.key] ?? 0 })),
     ...nonZeroTotals.filter((s) => !s.unit),
   ];
+  // `highlight`-flagged callouts (Array.sort is stable, so this only promotes them ahead of the
+  // rest without disturbing relative order otherwise) surface first — the figures worth calling
+  // out at a glance shouldn't depend on where their field happens to sit in the config.
   const calloutFields = [
     ...team.fields
       .filter((f) => f.unit && (data[f.key] ?? 0) !== 0)
       .map((f) => ({ label: f.label, value: data[f.key] ?? 0, unit: f.unit, highlight: f.highlight })),
     ...nonZeroTotals.filter((s) => s.unit),
-  ];
+  ].sort((a, b) => (b.highlight ? 1 : 0) - (a.highlight ? 1 : 0));
 
   const colors = shadeSteps(accent, pieFields.length);
 
@@ -626,7 +629,13 @@ export default function ReportView({
                               children: [
                                 { key: "revisioningBySource", label: "Re-versioning", ...revisioning },
                                 { key: "editingBySource", label: "Editing", ...editing },
-                                { key: "upscalingBySource", label: "Upscaling", ...upscaling },
+                                {
+                                  key: "upscalingBySource",
+                                  label: "Upscaling",
+                                  ...upscaling,
+                                  infoText:
+                                    "Upscaling is a restoration workflow where old or lower-resolution archival footage is enhanced to a higher resolution for reuse in new productions.",
+                                },
                               ],
                             },
                           ]);
