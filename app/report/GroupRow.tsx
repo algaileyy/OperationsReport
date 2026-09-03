@@ -1,6 +1,6 @@
 "use client";
 
-import { cloneElement, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { formatFieldValue } from "@/lib/format";
 
@@ -14,10 +14,72 @@ const DETAIL_BG = "rgba(0,0,0,0.12)";
  * as while the row's own total still uses the row's canonical unit. */
 type DetailItem = { label: string; value: number; unit?: string };
 
-/** Label/detail padding at each nesting depth — Tailwind needs literal class names, so this is a
- * small fixed lookup rather than a computed string. Only 0-2 are used (three levels deep, max). */
-const LABEL_PADDING = ["px-3 py-2 text-sm", "py-2 pl-9 pr-3 text-sm", "py-2 pl-16 pr-3 text-sm"];
-const DETAIL_PADDING = ["py-1.5 pl-9 pr-3 text-sm", "py-1.5 pl-16 pr-3 text-sm", "py-1.5 pl-24 pr-3 text-sm"];
+/** A row that may itself contain nested rows (Media Ingest's QC Hours, Digital Archive's QC
+ * Completed / Production Support Activities) — built once as plain data, then pruned and rendered
+ * generically so the "hide anything at 0" and "no arrow with nothing to expand" rules only need to
+ * be implemented in one place instead of at every nesting site. */
+export type TreeNode = {
+  key: string;
+  label: string;
+  total: number;
+  unit?: string;
+  infoText?: string;
+  detail?: DetailItem[];
+  children?: TreeNode[];
+};
+
+/** Drops zero-valued detail entries and nodes, keeping a parent only if its own total is non-zero
+ * or it still has surviving children (a parent's total isn't always the sum of its children — Media
+ * Ingest's QC Hours total is its own entered value, independent of the Failed/Passed counts nested
+ * under it). */
+export function pruneZero(nodes: TreeNode[]): TreeNode[] {
+  return nodes
+    .map((n) => ({
+      ...n,
+      detail: n.detail?.filter((d) => d.value !== 0),
+      children: n.children ? pruneZero(n.children) : undefined,
+    }))
+    .filter((n) => n.total !== 0 || (n.children?.length ?? 0) > 0);
+}
+
+/** Renders one level of a TreeNode list as GroupRows, recursing into each node's own children (via
+ * GroupRow itself, one level deeper) until the tree is exhausted. */
+export function RowTree({
+  nodes,
+  level,
+  seed,
+  screenVisible = true,
+}: {
+  nodes: TreeNode[];
+  level: number;
+  seed: { i: number };
+  /** Whether every ancestor above this level is currently open, so this whole level shows on
+   * screen at all — passed straight through as a plain prop to every row at this level. */
+  screenVisible?: boolean;
+}) {
+  return (
+    <>
+      {nodes.map((n) => {
+        const alt = seed.i++ % 2 === 1;
+        return (
+          <GroupRow
+            key={n.key}
+            label={n.label}
+            total={n.total}
+            detail={n.detail ?? []}
+            altRow={alt}
+            unit={n.unit ?? " Assets"}
+            level={level}
+            infoText={n.infoText}
+            childNodes={n.children}
+            seed={seed}
+            screenVisible={screenVisible}
+          />
+        );
+      })}
+    </>
+  );
+}
 
 /**
  * Renders its tooltip through a portal onto document.body, positioned via getBoundingClientRect
@@ -89,6 +151,11 @@ export function InfoIcon({ text }: { text: string }) {
   );
 }
 
+/** Label/detail padding at each nesting depth — Tailwind needs literal class names, so this is a
+ * small fixed lookup rather than a computed string. Only 0-2 are used (three levels deep, max). */
+const LABEL_PADDING = ["px-3 py-2 text-sm", "py-2 pl-9 pr-3 text-sm", "py-2 pl-16 pr-3 text-sm"];
+const DETAIL_PADDING = ["py-1.5 pl-9 pr-3 text-sm", "py-1.5 pl-16 pr-3 text-sm", "py-1.5 pl-24 pr-3 text-sm"];
+
 export default function GroupRow({
   label,
   total,
@@ -97,8 +164,8 @@ export default function GroupRow({
   unit,
   level = 0,
   infoText,
-  hasChildren = false,
-  children,
+  childNodes,
+  seed,
   screenVisible = true,
 }: {
   label: string;
@@ -111,12 +178,13 @@ export default function GroupRow({
   level?: number;
   /** Shows a white info icon next to the label with this text in a hover tooltip. */
   infoText?: string;
-  /** Whether `children` actually has anything in it — `detail.length > 0` alone can't tell, since
-   * a parent-of-parents row has no detail of its own, only nested GroupRows. Determines whether the
-   * expand arrow (and the ability to open the row at all) is shown. */
-  hasChildren?: boolean;
-  /** Extra rows (typically nested GroupRows) shown after `detail` while this row is open. */
-  children?: ReactNode;
+  /** Nested rows shown while this row is open, rendered one level deeper via RowTree — only a
+   * tree-shaped row (Media Ingest's QC Hours, Digital Archive's QC Completed / Production Support
+   * Activities) has these; a flat by-source breakdown has none. */
+  childNodes?: TreeNode[];
+  /** Shared row-striping counter — required whenever childNodes is set, so striping continues
+   * seamlessly into the nested level instead of restarting. */
+  seed?: { i: number };
   /** Whether every ancestor row is currently open, so this row shows on screen at all — a nested
    * row whose parent is collapsed passes this down as false. Detail/nested rows are always kept in
    * the DOM (never conditionally unmounted) so a print stylesheet can force them visible regardless
@@ -125,6 +193,7 @@ export default function GroupRow({
   screenVisible?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const hasChildren = (childNodes?.length ?? 0) > 0;
   const expandable = detail.length > 0 || hasChildren;
   const isOpen = expandable && open;
   // Hidden on screen when any ancestor (or this row itself) is collapsed, but the `print:` variant
@@ -132,9 +201,6 @@ export default function GroupRow({
   // what happened to be expanded in the browser at export time.
   const rowVisibility = screenVisible ? undefined : "hidden print:table-row";
   const childScreenVisible = screenVisible && isOpen;
-  const clonedChildren = isValidElement(children)
-    ? cloneElement(children as ReactElement<{ screenVisible?: boolean }>, { screenVisible: childScreenVisible })
-    : children;
 
   return (
     <>
@@ -168,7 +234,7 @@ export default function GroupRow({
           </td>
         </tr>
       ))}
-      {clonedChildren}
+      {hasChildren && <RowTree nodes={childNodes!} level={level + 1} seed={seed!} screenVisible={childScreenVisible} />}
     </>
   );
 }

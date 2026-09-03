@@ -2,7 +2,7 @@ import { monthRangeLabel } from "@/lib/months";
 import { formatFieldValue } from "@/lib/format";
 import { TEAMS, getTeam, type FieldConfig, type SourceBreakdownConfig, type TeamConfig, type TeamData } from "@/lib/teams";
 import { sumSourceEntries, type MonthlyReport, type SourceEntry } from "@/lib/report";
-import GroupRow, { InfoIcon } from "./GroupRow";
+import GroupRow, { InfoIcon, RowTree, pruneZero } from "./GroupRow";
 import ExportButton from "./ExportButton";
 import InteractivePie from "./InteractivePie";
 
@@ -363,72 +363,6 @@ function TeamPie({
   );
 }
 
-/** A row that may itself contain nested rows (Media Ingest's QC Hours, Digital Archive's QC
- * Completed / Production Support Activities) — built once as plain data, then pruned and rendered
- * generically so the "hide anything at 0" and "no arrow with nothing to expand" rules only need to
- * be implemented in one place instead of at every nesting site. */
-type TreeNode = {
-  key: string;
-  label: string;
-  total: number;
-  unit?: string;
-  infoText?: string;
-  detail?: { label: string; value: number }[];
-  children?: TreeNode[];
-};
-
-/** Drops zero-valued detail entries and nodes, keeping a parent only if its own total is non-zero
- * or it still has surviving children (a parent's total isn't always the sum of its children — Media
- * Ingest's QC Hours total is its own entered value, independent of the Failed/Passed counts nested
- * under it). */
-function pruneZero(nodes: TreeNode[]): TreeNode[] {
-  return nodes
-    .map((n) => ({
-      ...n,
-      detail: n.detail?.filter((d) => d.value !== 0),
-      children: n.children ? pruneZero(n.children) : undefined,
-    }))
-    .filter((n) => n.total !== 0 || (n.children?.length ?? 0) > 0);
-}
-
-function RowTree({
-  nodes,
-  level,
-  seed,
-  screenVisible = true,
-}: {
-  nodes: TreeNode[];
-  level: number;
-  seed: { i: number };
-  /** Propagated down from the enclosing GroupRow (via cloneElement) — whether this whole level is
-   * currently shown on screen, so each row it renders inherits the same ancestor-open chain. */
-  screenVisible?: boolean;
-}) {
-  return (
-    <>
-      {nodes.map((n) => {
-        const alt = seed.i++ % 2 === 1;
-        const hasChildren = (n.children?.length ?? 0) > 0;
-        return (
-          <GroupRow
-            key={n.key}
-            label={n.label}
-            total={n.total}
-            detail={n.detail ?? []}
-            altRow={alt}
-            unit={n.unit ?? displayUnit()}
-            level={level}
-            infoText={n.infoText}
-            hasChildren={hasChildren}
-            screenVisible={screenVisible}
-          >
-            {hasChildren && <RowTree nodes={n.children!} level={level + 1} seed={seed} />}
-          </GroupRow>
-        );
-      })}
-    </>
-  );
-}
 
 export default function ReportView({
   monthKey,
