@@ -391,7 +391,19 @@ function pruneZero(nodes: TreeNode[]): TreeNode[] {
     .filter((n) => n.total !== 0 || (n.children?.length ?? 0) > 0);
 }
 
-function RowTree({ nodes, level, seed }: { nodes: TreeNode[]; level: number; seed: { i: number } }) {
+function RowTree({
+  nodes,
+  level,
+  seed,
+  screenVisible = true,
+}: {
+  nodes: TreeNode[];
+  level: number;
+  seed: { i: number };
+  /** Propagated down from the enclosing GroupRow (via cloneElement) — whether this whole level is
+   * currently shown on screen, so each row it renders inherits the same ancestor-open chain. */
+  screenVisible?: boolean;
+}) {
   return (
     <>
       {nodes.map((n) => {
@@ -408,6 +420,7 @@ function RowTree({ nodes, level, seed }: { nodes: TreeNode[]; level: number; see
             level={level}
             infoText={n.infoText}
             hasChildren={hasChildren}
+            screenVisible={screenVisible}
           >
             {hasChildren && <RowTree nodes={n.children!} level={level + 1} seed={seed} />}
           </GroupRow>

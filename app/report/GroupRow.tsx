@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { cloneElement, isValidElement, useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { formatFieldValue } from "@/lib/format";
 
@@ -99,6 +99,7 @@ export default function GroupRow({
   infoText,
   hasChildren = false,
   children,
+  screenVisible = true,
 }: {
   label: string;
   total: number;
@@ -116,10 +117,24 @@ export default function GroupRow({
   hasChildren?: boolean;
   /** Extra rows (typically nested GroupRows) shown after `detail` while this row is open. */
   children?: ReactNode;
+  /** Whether every ancestor row is currently open, so this row shows on screen at all — a nested
+   * row whose parent is collapsed passes this down as false. Detail/nested rows are always kept in
+   * the DOM (never conditionally unmounted) so a print stylesheet can force them visible regardless
+   * of on-screen collapse state; this prop is what drives that screen-only hiding. Exported PDFs are
+   * a static snapshot with no click affordance, so print always shows every row expanded. */
+  screenVisible?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const expandable = detail.length > 0 || hasChildren;
   const isOpen = expandable && open;
+  // Hidden on screen when any ancestor (or this row itself) is collapsed, but the `print:` variant
+  // always wins in print media, so an exported PDF shows every row's full detail regardless of
+  // what happened to be expanded in the browser at export time.
+  const rowVisibility = screenVisible ? undefined : "hidden print:table-row";
+  const childScreenVisible = screenVisible && isOpen;
+  const clonedChildren = isValidElement(children)
+    ? cloneElement(children as ReactElement<{ screenVisible?: boolean }>, { screenVisible: childScreenVisible })
+    : children;
 
   return (
     <>
@@ -127,12 +142,12 @@ export default function GroupRow({
         onClick={expandable ? () => setOpen((o) => !o) : undefined}
         role={expandable ? "button" : undefined}
         aria-expanded={expandable ? isOpen : undefined}
-        className={expandable ? "cursor-pointer select-none" : undefined}
+        className={[expandable ? "cursor-pointer select-none" : "", rowVisibility].filter(Boolean).join(" ") || undefined}
         style={{ background: altRow ? ROW_ALT : "transparent" }}
       >
         <td className={LABEL_PADDING[level] ?? LABEL_PADDING[LABEL_PADDING.length - 1]}>
           <span className="inline-flex items-center gap-2 font-bold" style={{ color: TEXT_BRIGHT }}>
-            <span className="inline-block w-4 text-base" style={{ color: "#5fd4f4" }}>
+            <span className="inline-block w-4 text-base print:hidden" style={{ color: "#5fd4f4" }}>
               {expandable ? (isOpen ? "▾" : "▸") : ""}
             </span>
             {label}
@@ -143,21 +158,17 @@ export default function GroupRow({
           {formatFieldValue(total, unit)}
         </td>
       </tr>
-      {isOpen && (
-        <>
-          {detail.map((d) => (
-            <tr key={d.label} style={{ background: DETAIL_BG }}>
-              <td className={DETAIL_PADDING[level] ?? DETAIL_PADDING[DETAIL_PADDING.length - 1]} style={{ color: TEXT_DETAIL }}>
-                {d.label}
-              </td>
-              <td className="px-3 py-1.5 text-sm" style={{ color: TEXT_DETAIL }}>
-                {formatFieldValue(d.value, d.unit ?? unit)}
-              </td>
-            </tr>
-          ))}
-          {children}
-        </>
-      )}
+      {detail.map((d) => (
+        <tr key={d.label} className={childScreenVisible ? undefined : "hidden print:table-row"} style={{ background: DETAIL_BG }}>
+          <td className={DETAIL_PADDING[level] ?? DETAIL_PADDING[DETAIL_PADDING.length - 1]} style={{ color: TEXT_DETAIL }}>
+            {d.label}
+          </td>
+          <td className="px-3 py-1.5 text-sm" style={{ color: TEXT_DETAIL }}>
+            {formatFieldValue(d.value, d.unit ?? unit)}
+          </td>
+        </tr>
+      ))}
+      {clonedChildren}
     </>
   );
 }
