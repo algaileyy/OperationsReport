@@ -2,7 +2,7 @@ import { monthRangeLabel } from "@/lib/months";
 import { formatFieldValue } from "@/lib/format";
 import { TEAMS, getTeam, type FieldConfig, type SourceBreakdownConfig, type TeamConfig, type TeamData } from "@/lib/teams";
 import { sumSourceEntries, type MonthlyReport, type SourceEntry } from "@/lib/report";
-import GroupRow, { InfoIcon, RowTree, pruneZero } from "./GroupRow";
+import GroupRow, { InfoIcon, RowTree, type TreeNode } from "./GroupRow";
 import ExportButton from "./ExportButton";
 import InteractivePie from "./InteractivePie";
 
@@ -363,6 +363,21 @@ function TeamPie({
   );
 }
 
+/** Drops zero-valued detail entries and nodes, keeping a parent only if its own total is non-zero
+ * or it still has surviving children (a parent's total isn't always the sum of its children — Media
+ * Ingest's QC Hours total is its own entered value, independent of the Failed/Passed counts nested
+ * under it). Lives here (a Server Component) rather than in GroupRow.tsx ("use client") because a
+ * client module's plain function exports aren't callable across that boundary — only its exported
+ * components are, when rendered as JSX (like RowTree/GroupRow below). */
+function pruneZero(nodes: TreeNode[]): TreeNode[] {
+  return nodes
+    .map((n) => ({
+      ...n,
+      detail: n.detail?.filter((d) => d.value !== 0),
+      children: n.children ? pruneZero(n.children) : undefined,
+    }))
+    .filter((n) => n.total !== 0 || (n.children?.length ?? 0) > 0);
+}
 
 export default function ReportView({
   monthKey,

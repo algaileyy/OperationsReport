@@ -28,20 +28,6 @@ export type TreeNode = {
   children?: TreeNode[];
 };
 
-/** Drops zero-valued detail entries and nodes, keeping a parent only if its own total is non-zero
- * or it still has surviving children (a parent's total isn't always the sum of its children — Media
- * Ingest's QC Hours total is its own entered value, independent of the Failed/Passed counts nested
- * under it). */
-export function pruneZero(nodes: TreeNode[]): TreeNode[] {
-  return nodes
-    .map((n) => ({
-      ...n,
-      detail: n.detail?.filter((d) => d.value !== 0),
-      children: n.children ? pruneZero(n.children) : undefined,
-    }))
-    .filter((n) => n.total !== 0 || (n.children?.length ?? 0) > 0);
-}
-
 /** Renders one level of a TreeNode list as GroupRows, recursing into each node's own children (via
  * GroupRow itself, one level deeper) until the tree is exhausted. */
 export function RowTree({
