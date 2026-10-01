@@ -30,5 +30,6 @@ export const config = {
     "/api/reminder-recipients",
     "/api/send-reminder",
     "/api/report-history",
+    "/api/production-support-activities",
   ],
 };

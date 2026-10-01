@@ -70,7 +70,7 @@ export type SourceBreakdownConfig = {
 };
 
 const MEDIA_INGEST_COMMON_SOURCES = ["Atheer", "AJA", "AJD", "AJ360 ORIGINALS", "AJ+ AR", "AJ+ EN", "Licensed", "Syria Now"];
-const ARCHIVING_COMMON_SOURCES = ["AJ360", "Atheer", "Doha Debates", "Syria Now", "Sadeem"];
+export const ARCHIVING_COMMON_SOURCES = ["AJ360", "Atheer", "Doha Debates", "Syria Now", "Sadeem"];
 
 export type TeamConfig = {
   key: string;
@@ -147,16 +147,16 @@ export const TEAMS: TeamConfig[] = [
       { key: "textlessCleansHours", label: "Hours of QC", unit: "H", segmentSlot: { segment: "Textless/Cleans QC", position: "end" } },
     ],
     sourceBreakdowns: [
-      { key: "textlessCleansPassedQC", label: "Passed QC", segment: "Textless/Cleans QC" },
-      { key: "textlessCleansFailedQC", label: "Failed QC", segment: "Textless/Cleans QC" },
-      { key: "rushesReceived", label: "Received", segment: "Rushes" },
-      { key: "rushesPassedQC", label: "Passed QC", segment: "Rushes" },
-      { key: "rushesFailedQC", label: "Failed QC", segment: "Rushes" },
-      { key: "projectFilesPassed", label: "Passed", segment: "Project Files" },
-      { key: "projectFilesReceived", label: "Received", segment: "Project Files" },
-      { key: "revisioningBySource", label: "Re-versioning", segment: "Production Support Activities" },
-      { key: "editingBySource", label: "Editing", segment: "Production Support Activities" },
-      { key: "upscalingBySource", label: "Upscaling", segment: "Production Support Activities" },
+      { key: "textlessCleansPassedQC", label: "Passed QC", segment: "Textless/Cleans QC", commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "textlessCleansFailedQC", label: "Failed QC", segment: "Textless/Cleans QC", commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "rushesReceived", label: "Received", segment: "Rushes", commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "rushesPassedQC", label: "Passed QC", segment: "Rushes", commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "rushesFailedQC", label: "Failed QC", segment: "Rushes", commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "projectFilesPassed", label: "Passed", segment: "Project Files", commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "projectFilesReceived", label: "Received", segment: "Project Files", commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "revisioningBySource", label: "Re-versioning", segment: "Production Support Activities", commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "editingBySource", label: "Editing", segment: "Production Support Activities", commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "upscalingBySource", label: "Upscaling", segment: "Production Support Activities", commonSources: ARCHIVING_COMMON_SOURCES },
       { key: "archived", label: "Archived", unit: "TB", segment: "Archive & Storage", highlight: true, commonSources: ARCHIVING_COMMON_SOURCES },
       { key: "archiveInProgress", label: "Archive In Progress", unit: "TB", segment: "Archive & Storage", commonSources: ARCHIVING_COMMON_SOURCES },
       { key: "storageFreed", label: "Storage Freed", unit: "TB", segment: "Archive & Storage", highlight: true, commonSources: ARCHIVING_COMMON_SOURCES },

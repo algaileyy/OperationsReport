@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getMonthlyReport, getPublishedMonth, getReportUpdatedAt } from "@/lib/db";
+import { getCustomActivities, getMonthlyReport, getPublishedMonth, getReportUpdatedAt } from "@/lib/db";
 import { currentMonthKey, monthLabel } from "@/lib/months";
 import { emptyReport } from "@/lib/report";
 import ReportView from "../../report/ReportView";
@@ -11,13 +11,14 @@ const MONTH_RE = /^\d{4}-\d{2}$/;
 export default async function PreviewPage({ searchParams }: { searchParams: { month?: string } }) {
   const month = searchParams.month && MONTH_RE.test(searchParams.month) ? searchParams.month : currentMonthKey();
 
-  const [data, publishedMonth, updatedAt] = await Promise.all([
+  const [data, publishedMonth, updatedAt, customActivities] = await Promise.all([
     getMonthlyReport(month),
     getPublishedMonth(),
     getReportUpdatedAt(month),
+    getCustomActivities(),
   ]);
 
-  const report = data ?? emptyReport();
+  const report = data ?? emptyReport(customActivities);
   const isLive = month === publishedMonth;
 
   const banner = (
@@ -36,5 +37,5 @@ export default async function PreviewPage({ searchParams }: { searchParams: { mo
     </div>
   );
 
-  return <ReportView monthKey={month} report={report} updatedAt={updatedAt} banner={banner} />;
+  return <ReportView monthKey={month} report={report} updatedAt={updatedAt} banner={banner} customActivities={customActivities} />;
 }

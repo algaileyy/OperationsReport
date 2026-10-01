@@ -1,7 +1,7 @@
 import { monthRangeLabel } from "@/lib/months";
 import { formatFieldValue } from "@/lib/format";
 import { TEAMS, getTeam, type FieldConfig, type SourceBreakdownConfig, type TeamConfig, type TeamData } from "@/lib/teams";
-import { sumSourceEntries, type MonthlyReport, type SourceEntry } from "@/lib/report";
+import { sumSourceEntries, type CustomActivity, type MonthlyReport, type SourceEntry } from "@/lib/report";
 import GroupRow, { InfoIcon, RowTree, type TreeNode } from "./GroupRow";
 import ExportButton from "./ExportButton";
 import InteractivePie from "./InteractivePie";
@@ -384,12 +384,17 @@ export default function ReportView({
   report,
   updatedAt,
   banner,
+  customActivities = [],
 }: {
   monthKey: string;
   report: MonthlyReport;
   updatedAt: Date | null;
   /** Optional callout shown above the title — used by the /input preview to mark draft/unpublished months. */
   banner?: React.ReactNode;
+  /** Production Support Activities the team added beyond the fixed Re-versioning/Editing/Upscaling
+   * ones — rendered as additional rows in that same section, pruned away when empty like everything
+   * else here. */
+  customActivities?: CustomActivity[];
 }) {
   return (
     <main className="relative z-0 min-h-screen print:min-h-0 report-flat-page">
@@ -605,6 +610,7 @@ export default function ReportView({
                           const revisioning = bySource("revisioningBySource");
                           const editing = bySource("editingBySource");
                           const upscaling = bySource("upscalingBySource");
+                          const extraActivities = customActivities.map((a) => ({ ...a, ...bySource(a.id) }));
                           // Textless/Cleans QC's headline number is what was received this month —
                           // its own entered value, independent of the Passed/Failed/In Progress counts
                           // nested under it — same pattern as Media Ingest's QC Hours total above.
@@ -615,7 +621,8 @@ export default function ReportView({
                           const textlessTotal = textlessReceived;
                           const rushesTotal = rushesReceived.total + rushesPassedQC.total + rushesFailedQC.total;
                           const projectFilesTotal = filesPassed.total + filesReceived.total;
-                          const productionSupportTotal = revisioning.total + editing.total + upscaling.total;
+                          const productionSupportTotal =
+                            revisioning.total + editing.total + upscaling.total + extraActivities.reduce((s, a) => s + a.total, 0);
 
                           const nodes = pruneZero([
                             {
@@ -670,6 +677,7 @@ export default function ReportView({
                                   infoText:
                                     "Upscaling is a restoration workflow where old or lower-resolution archival footage is enhanced to a higher resolution for reuse in new productions.",
                                 },
+                                ...extraActivities.map((a) => ({ key: a.id, label: a.label, total: a.total, detail: a.detail })),
                               ],
                             },
                           ]);
@@ -682,9 +690,16 @@ export default function ReportView({
                   </table>
                 </div>
                 {note && (
-                  <p className="mt-3 text-sm italic" style={{ color: TEXT_DIM }}>
-                    {note}
-                  </p>
+                  <div className="mt-3">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide" style={{ color: TEXT_DIM }}>
+                      Notes
+                    </p>
+                    <ul className="list-disc space-y-0.5 pl-4 text-sm italic" style={{ color: TEXT_DIM }}>
+                      {commentLines(note).map((line, i) => (
+                        <li key={i}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </section>
             );

@@ -6,8 +6,15 @@ import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import SourceNameField from "./SourceNameField";
 import { monthLabel } from "@/lib/months";
-import { TEAMS, allowedTeamKeysFor, type FieldConfig } from "@/lib/teams";
-import { sumSourceEntries, type MonthlyReport, type ReportHighlights, type SourceEntry } from "@/lib/report";
+import { TEAMS, allowedTeamKeysFor, ARCHIVING_COMMON_SOURCES, type FieldConfig, type SourceBreakdownConfig } from "@/lib/teams";
+import {
+  CUSTOM_ACTIVITY_TEAM_KEY,
+  sumSourceEntries,
+  type CustomActivity,
+  type MonthlyReport,
+  type ReportHighlights,
+  type SourceEntry,
+} from "@/lib/report";
 import { formatFieldValue } from "@/lib/format";
 
 const ACCENT_HEX: Record<string, string> = {
@@ -57,6 +64,7 @@ type Props = {
   defaultMonth: string;
   initialData: MonthlyReport;
   initialRecipients: string[];
+  initialCustomActivities: CustomActivity[];
 };
 
 export default function InputClient({
@@ -67,6 +75,7 @@ export default function InputClient({
   defaultMonth,
   initialData,
   initialRecipients,
+  initialCustomActivities,
 }: Props) {
   const isAdmin = role === "admin";
   const router = useRouter();
@@ -77,6 +86,9 @@ export default function InputClient({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [customActivities, setCustomActivities] = useState<CustomActivity[]>(initialCustomActivities);
+  const [newActivityLabel, setNewActivityLabel] = useState("");
+  const [addingActivity, setAddingActivity] = useState(false);
 
   const [live, setLive] = useState(publishedMonth);
   const [publishMonth, setPublishMonth] = useState(publishedMonth ?? defaultMonth);
@@ -136,6 +148,30 @@ export default function InputClient({
     const body = await res.json();
     setData(body.data);
     setLoading(false);
+  }
+
+  async function onAddActivity() {
+    const label = newActivityLabel.trim();
+    if (!label) return;
+    setAddingActivity(true);
+    const res = await fetch("/api/production-support-activities", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label }),
+    });
+    setAddingActivity(false);
+    if (res.ok) {
+      const body = await res.json();
+      setCustomActivities((list) => [...list, body.activity]);
+      setData((d) => ({
+        ...d,
+        sourceBreakdowns: {
+          ...d.sourceBreakdowns,
+          [CUSTOM_ACTIVITY_TEAM_KEY]: { ...d.sourceBreakdowns[CUSTOM_ACTIVITY_TEAM_KEY], [body.activity.id]: [] },
+        },
+      }));
+      setNewActivityLabel("");
+    }
   }
 
   function setField(teamKey: string, fieldKey: string, value: string) {
@@ -593,7 +629,26 @@ export default function InputClient({
                 </div>
 
                 {(() => {
-                  const breakdowns = team.sourceBreakdowns ?? [];
+                  const configBreakdowns = team.sourceBreakdowns ?? [];
+                  // Custom Production Support Activities (e.g. "Production support meeting") slot in
+                  // right after the fixed Upscaling entry, so they render as part of the same segment
+                  // instead of opening a second "Production Support Activities" heading further down.
+                  const breakdowns: SourceBreakdownConfig[] =
+                    team.key === CUSTOM_ACTIVITY_TEAM_KEY
+                      ? configBreakdowns.flatMap((sb) =>
+                          sb.key === "upscalingBySource"
+                            ? [
+                                sb,
+                                ...customActivities.map((a) => ({
+                                  key: a.id,
+                                  label: a.label,
+                                  segment: "Production Support Activities",
+                                  commonSources: ARCHIVING_COMMON_SOURCES,
+                                })),
+                              ]
+                            : [sb]
+                        )
+                      : configBreakdowns;
                   const slotFields = (segment: string, position: "start" | "end") =>
                     team.fields.filter((f) => f.segmentSlot?.segment === segment && f.segmentSlot.position === position);
 
@@ -731,6 +786,29 @@ export default function InputClient({
                     if (isLastOfSegment) {
                       for (const field of slotFields(sb.segment!, "end")) {
                         nodes.push(plainFieldBlock(field, "mt-4"));
+                      }
+                      if (team.key === CUSTOM_ACTIVITY_TEAM_KEY && sb.segment === "Production Support Activities") {
+                        nodes.push(
+                          <div key="add-activity" className="mt-4 flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={newActivityLabel}
+                              onChange={(e) => setNewActivityLabel(e.target.value)}
+                              placeholder="New activity name (e.g. Production support meeting)"
+                              className="max-w-xs flex-1 rounded-md border px-3 py-2 text-sm"
+                              style={inputStyle}
+                            />
+                            <button
+                              type="button"
+                              onClick={onAddActivity}
+                              disabled={addingActivity || !newActivityLabel.trim()}
+                              className="rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                              style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
+                            >
+                              {addingActivity ? "Adding…" : "+ Add activity"}
+                            </button>
+                          </div>
+                        );
                       }
                     }
                   });

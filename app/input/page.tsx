@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getMonthlyReport, getPublishedMonth, getReminderRecipients, listMonthsWithData } from "@/lib/db";
+import { getCustomActivities, getMonthlyReport, getPublishedMonth, getReminderRecipients, listMonthsWithData } from "@/lib/db";
 import { computeEditingMonth } from "@/lib/months";
 import { emptyReport } from "@/lib/report";
 import { SESSION_COOKIE, verifySession } from "@/lib/auth";
@@ -14,10 +14,11 @@ export default async function InputPage({ searchParams }: { searchParams: { mont
   const session = await verifySession(cookies().get(SESSION_COOKIE)?.value);
   const role = session?.role ?? "member";
   const name = session?.name ?? "";
-  const [publishedMonth, monthsWithData, reminderRecipients] = await Promise.all([
+  const [publishedMonth, monthsWithData, reminderRecipients, customActivities] = await Promise.all([
     getPublishedMonth(),
     listMonthsWithData(),
     getReminderRecipients(),
+    getCustomActivities(),
   ]);
 
   // Non-admins can only ever see/edit the current rolling editing month — their own choice of
@@ -25,7 +26,7 @@ export default async function InputPage({ searchParams }: { searchParams: { mont
   const requestedMonth = searchParams.month && MONTH_RE.test(searchParams.month) ? searchParams.month : null;
   const defaultMonth =
     role === "admin" ? requestedMonth ?? publishedMonth ?? computeEditingMonth() : computeEditingMonth();
-  const initialData = (await getMonthlyReport(defaultMonth)) ?? emptyReport();
+  const initialData = (await getMonthlyReport(defaultMonth)) ?? emptyReport(customActivities);
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -38,6 +39,7 @@ export default async function InputPage({ searchParams }: { searchParams: { mont
         defaultMonth={defaultMonth}
         initialData={initialData}
         initialRecipients={reminderRecipients}
+        initialCustomActivities={customActivities}
       />
     </main>
   );

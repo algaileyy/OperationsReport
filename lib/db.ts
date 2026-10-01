@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { normalizeReport, type MonthlyReport } from "./report";
+import { normalizeReport, type CustomActivity, type MonthlyReport } from "./report";
 
 // Standard node-postgres pool — works against any Postgres instance
 // (local, on-prem NAS, or a hosted provider), unlike @vercel/postgres
@@ -99,12 +99,47 @@ export function ensureSchema(): Promise<void> {
 
 export async function getMonthlyReport(month: string): Promise<MonthlyReport | null> {
   await ensureSchema();
-  const { rows } = await getPool().query<{ data: unknown }>(
-    `SELECT data FROM monthly_reports WHERE month = $1;`,
-    [month]
-  );
+  const [{ rows }, customActivities] = await Promise.all([
+    getPool().query<{ data: unknown }>(`SELECT data FROM monthly_reports WHERE month = $1;`, [month]),
+    getCustomActivities(),
+  ]);
   if (!rows[0]) return null;
-  return normalizeReport(rows[0].data);
+  return normalizeReport(rows[0].data, customActivities);
+}
+
+/** Production Support Activities (Digital Archive & Production Support) can be extended by the
+ * team at any time (e.g. "Production support meeting") — unlike everything else in a report, this
+ * list isn't month-specific, so it lives in `settings` rather than in `monthly_reports`. */
+export async function getCustomActivities(): Promise<CustomActivity[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ value: string }>(
+    `SELECT value FROM settings WHERE key = 'production_support_activities';`
+  );
+  if (!rows[0]) return [];
+  try {
+    const parsed = JSON.parse(rows[0].value);
+    return Array.isArray(parsed)
+      ? parsed.filter((e): e is CustomActivity => typeof e?.id === "string" && typeof e?.label === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function addCustomActivity(label: string): Promise<CustomActivity> {
+  await ensureSchema();
+  const activities = await getCustomActivities();
+  const activity: CustomActivity = { id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, label };
+  const next = [...activities, activity];
+  await getPool().query(
+    `
+    INSERT INTO settings (key, value)
+    VALUES ('production_support_activities', $1)
+    ON CONFLICT (key) DO UPDATE SET value = $1;
+    `,
+    [JSON.stringify(next)]
+  );
+  return activity;
 }
 
 export async function upsertMonthlyReport(month: string, data: MonthlyReport, savedBy: string): Promise<void> {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { emptyReport, normalizeReport } from "@/lib/report";
-import { getMonthlyReport, upsertMonthlyReport } from "@/lib/db";
+import { getCustomActivities, getMonthlyReport, upsertMonthlyReport } from "@/lib/db";
 import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 import { computeEditingMonth } from "@/lib/months";
 import { TEAMS, allowedTeamKeysFor } from "@/lib/teams";
@@ -26,14 +26,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This month is locked. Only an admin can edit past or future months." }, { status: 403 });
   }
 
-  const data = normalizeReport(body?.data);
+  const customActivities = await getCustomActivities();
+  const data = normalizeReport(body?.data, customActivities);
 
   // A member restricted to certain teams (e.g. Omar -> Digital Archive & Production Support only)
   // can't touch other teams' sections even via a direct request — whatever they submit for a team
   // they're not allowed to edit is discarded in favor of what's actually saved for it already.
   const allowedKeys = allowedTeamKeysFor(session.role, session.name);
   if (allowedKeys) {
-    const existing = (await getMonthlyReport(month)) ?? emptyReport();
+    const existing = (await getMonthlyReport(month)) ?? emptyReport(customActivities);
     for (const team of TEAMS) {
       if (!allowedKeys.includes(team.key)) {
         data.teams[team.key] = existing.teams[team.key];

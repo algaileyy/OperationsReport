@@ -30,6 +30,16 @@ export function sumSourceEntries(entries: SourceEntry[], sb: SourceBreakdownConf
 /** teamKey -> breakdownKey -> entries */
 export type SourceBreakdowns = Record<string, Record<string, SourceEntry[]>>;
 
+/** A by-source activity the Digital Archive & Production Support team added on the fly (e.g.
+ * "Production support meeting"), on top of the fixed Re-versioning/Editing/Upscaling ones —
+ * stored separately (lib/db.ts) since, unlike everything else here, it isn't month-specific: once
+ * added it's available in every month going forward, the same way a fixed field would be. */
+export type CustomActivity = { id: string; label: string };
+
+/** The only team custom activities can be added to today — Production Support Activities is the
+ * one open-ended "by source" segment teams asked to extend themselves. */
+export const CUSTOM_ACTIVITY_TEAM_KEY = "archivingSupport";
+
 /** Report-wide narrative context, shown at the top of the report alongside the Executive Summary. */
 export type ReportHighlights = {
   mainAchievements: string;
@@ -77,7 +87,7 @@ function withStarterSources(entries: SourceEntry[], breakdownKey: string): Sourc
   return [...entries, ...seeded];
 }
 
-export function emptyReport(): MonthlyReport {
+export function emptyReport(customActivities: CustomActivity[] = []): MonthlyReport {
   const teams: Record<string, TeamData> = {};
   const notes: Record<string, string> = {};
   const sourceBreakdowns: SourceBreakdowns = {};
@@ -89,6 +99,11 @@ export function emptyReport(): MonthlyReport {
     sourceBreakdowns[t.key] = {};
     for (const sb of t.sourceBreakdowns ?? []) {
       sourceBreakdowns[t.key][sb.key] = withStarterSources([], sb.key);
+    }
+    if (t.key === CUSTOM_ACTIVITY_TEAM_KEY) {
+      for (const activity of customActivities) {
+        sourceBreakdowns[t.key][activity.id] = [];
+      }
     }
     fieldUnits[t.key] = {};
     for (const f of t.fields) {
@@ -108,8 +123,26 @@ export function emptyReport(): MonthlyReport {
   };
 }
 
+function normalizeSourceEntries(raw: unknown, idPrefix: string, unitOptions?: string[]): SourceEntry[] {
+  return Array.isArray(raw)
+    ? raw.map((e, i) => {
+        const entry = e as Partial<SourceEntry> | null;
+        const count = Number(entry?.count);
+        return {
+          id: typeof entry?.id === "string" ? entry.id : `${idPrefix}-${i}`,
+          source: typeof entry?.source === "string" ? entry.source : "",
+          count: Number.isFinite(count) && count >= 0 ? count : 0,
+          unit:
+            unitOptions && typeof entry?.unit === "string" && unitOptions.includes(entry.unit)
+              ? entry.unit
+              : unitOptions?.[0],
+        };
+      })
+    : [];
+}
+
 /** Coerce arbitrary JSON into a well-formed MonthlyReport, dropping anything malformed. */
-export function normalizeReport(raw: unknown): MonthlyReport {
+export function normalizeReport(raw: unknown, customActivities: CustomActivity[] = []): MonthlyReport {
   const src = raw as {
     teams?: Record<string, Record<string, unknown>>;
     notes?: Record<string, unknown>;
@@ -158,23 +191,13 @@ export function normalizeReport(raw: unknown): MonthlyReport {
 
     sourceBreakdowns[team.key] = {};
     for (const sb of team.sourceBreakdowns ?? []) {
-      const rawEntries = sbSrc[team.key]?.[sb.key];
-      const entries: SourceEntry[] = Array.isArray(rawEntries)
-        ? rawEntries.map((e, i) => {
-            const entry = e as Partial<SourceEntry> | null;
-            const count = Number(entry?.count);
-            return {
-              id: typeof entry?.id === "string" ? entry.id : `${sb.key}-${i}`,
-              source: typeof entry?.source === "string" ? entry.source : "",
-              count: Number.isFinite(count) && count >= 0 ? count : 0,
-              unit:
-                sb.unitOptions && typeof entry?.unit === "string" && sb.unitOptions.includes(entry.unit)
-                  ? entry.unit
-                  : sb.unitOptions?.[0],
-            };
-          })
-        : [];
+      const entries = normalizeSourceEntries(sbSrc[team.key]?.[sb.key], sb.key, sb.unitOptions);
       sourceBreakdowns[team.key][sb.key] = withStarterSources(entries, sb.key);
+    }
+    if (team.key === CUSTOM_ACTIVITY_TEAM_KEY) {
+      for (const activity of customActivities) {
+        sourceBreakdowns[team.key][activity.id] = normalizeSourceEntries(sbSrc[team.key]?.[activity.id], activity.id);
+      }
     }
   }
 

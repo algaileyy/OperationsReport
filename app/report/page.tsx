@@ -1,4 +1,4 @@
-import { getMonthlyReport, getPublishedMonth, getReportUpdatedAt } from "@/lib/db";
+import { getCustomActivities, getMonthlyReport, getPublishedMonth, getReportUpdatedAt } from "@/lib/db";
 import { emptyReport } from "@/lib/report";
 import ReportView from "./ReportView";
 
@@ -18,12 +18,13 @@ export default async function ReportPage() {
     );
   }
 
-  const [data, updatedAt] = await Promise.all([
+  const [data, updatedAt, customActivities] = await Promise.all([
     getMonthlyReport(publishedMonth),
     getReportUpdatedAt(publishedMonth),
+    getCustomActivities(),
   ]);
 
-  const report = data ?? emptyReport();
+  const report = data ?? emptyReport(customActivities);
 
-  return <ReportView monthKey={publishedMonth} report={report} updatedAt={updatedAt} />;
+  return <ReportView monthKey={publishedMonth} report={report} updatedAt={updatedAt} customActivities={customActivities} />;
 }

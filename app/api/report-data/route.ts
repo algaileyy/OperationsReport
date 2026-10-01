@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMonthlyReport } from "@/lib/db";
+import { getCustomActivities, getMonthlyReport } from "@/lib/db";
 import { emptyReport } from "@/lib/report";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -11,6 +11,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid month." }, { status: 400 });
   }
 
-  const data = (await getMonthlyReport(month)) ?? emptyReport();
+  const data = (await getMonthlyReport(month)) ?? emptyReport(await getCustomActivities());
   return NextResponse.json({ data });
 }
