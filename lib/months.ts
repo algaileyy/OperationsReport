@@ -5,11 +5,13 @@ export function currentMonthKey(): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-/** The month non-admins are allowed to edit: the current calendar month, except from the 25th
- * onward, when it rolls forward to next month (so the team can start entering next month's numbers
- * a few days early instead of waiting for the 1st). */
+/** The month non-admins are allowed to edit: a rolling ~30-day window from the 25th of one
+ * calendar month through the 24th of the next, labeled by the earlier month — e.g. Sept 25
+ * through Oct 24 is all "September" (giving the team the rest of September plus the first 25 days
+ * of October to finalize it), then it flips to "October" on Oct 25. Matches computeAutoPublishMonth:
+ * the day a new editing month opens (the 25th) is the same day the previous one auto-publishes. */
 export function computeEditingMonth(now: Date = new Date()): string {
-  const monthOffset = now.getUTCDate() >= 25 ? 1 : 0;
+  const monthOffset = now.getUTCDate() >= 25 ? 0 : -1;
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + monthOffset, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
