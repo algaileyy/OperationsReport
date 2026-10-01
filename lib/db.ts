@@ -77,6 +77,21 @@ export function ensureSchema(): Promise<void> {
           value TEXT NOT NULL
         );
       `);
+      // Append-only log of every save — monthly_reports only ever holds the current state, so
+      // without this a concurrent or mistaken save silently and irrecoverably overwrites whatever
+      // was there before. Never updated or deleted, only ever inserted into.
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS report_history (
+          id SERIAL PRIMARY KEY,
+          month TEXT NOT NULL,
+          data JSONB NOT NULL,
+          saved_by TEXT NOT NULL,
+          saved_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        );
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS report_history_month_saved_at_idx ON report_history (month, saved_at DESC);
+      `);
     })();
   }
   return global.__schemaReady!;
@@ -92,17 +107,53 @@ export async function getMonthlyReport(month: string): Promise<MonthlyReport | n
   return normalizeReport(rows[0].data);
 }
 
-export async function upsertMonthlyReport(month: string, data: MonthlyReport): Promise<void> {
+export async function upsertMonthlyReport(month: string, data: MonthlyReport, savedBy: string): Promise<void> {
   await ensureSchema();
-  await getPool().query(
-    `
-    INSERT INTO monthly_reports (month, data, updated_at)
-    VALUES ($1, $2::jsonb, now())
-    ON CONFLICT (month)
-    DO UPDATE SET data = $2::jsonb, updated_at = now();
-    `,
-    [month, JSON.stringify(data)]
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `
+      INSERT INTO monthly_reports (month, data, updated_at)
+      VALUES ($1, $2::jsonb, now())
+      ON CONFLICT (month)
+      DO UPDATE SET data = $2::jsonb, updated_at = now();
+      `,
+      [month, JSON.stringify(data)]
+    );
+    await client.query(
+      `INSERT INTO report_history (month, data, saved_by) VALUES ($1, $2::jsonb, $3);`,
+      [month, JSON.stringify(data), savedBy]
+    );
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export type ReportHistoryEntry = {
+  id: number;
+  savedBy: string;
+  savedAt: Date;
+};
+
+export async function listReportHistory(month: string): Promise<ReportHistoryEntry[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ id: number; saved_by: string; saved_at: Date }>(
+    `SELECT id, saved_by, saved_at FROM report_history WHERE month = $1 ORDER BY saved_at DESC;`,
+    [month]
   );
+  return rows.map((r) => ({ id: r.id, savedBy: r.saved_by, savedAt: r.saved_at }));
+}
+
+export async function getReportHistoryEntryData(id: number): Promise<MonthlyReport | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ data: unknown }>(`SELECT data FROM report_history WHERE id = $1;`, [id]);
+  if (!rows[0]) return null;
+  return normalizeReport(rows[0].data);
 }
 
 export async function listMonthsWithData(): Promise<string[]> {

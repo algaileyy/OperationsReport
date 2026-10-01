@@ -1,11 +1,15 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { getPublishedMonth, getReportUpdatedAt, listMonthsWithData } from "@/lib/db";
 import { monthLabel } from "@/lib/months";
+import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 import InputNav from "../InputNav";
 
 export const dynamic = "force-dynamic";
 
 export default async function HistoryPage() {
+  const role = await verifySession(cookies().get(SESSION_COOKIE)?.value);
+  const isAdmin = role === "admin";
   const [months, publishedMonth] = await Promise.all([listMonthsWithData(), getPublishedMonth()]);
 
   const rows = await Promise.all(
@@ -89,6 +93,11 @@ export default async function HistoryPage() {
                         <Link href={`/input/preview?month=${month}`} className="underline" style={{ color: "#2a78d6" }}>
                           Preview / Export
                         </Link>
+                        {isAdmin && (
+                          <Link href={`/input/history/${month}`} className="underline" style={{ color: "#2a78d6" }}>
+                            Save History
+                          </Link>
+                        )}
                       </div>
                     </td>
                   </tr>

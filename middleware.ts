@@ -20,6 +20,7 @@ export const config = {
     "/input/",
     "/input/preview",
     "/input/history",
+    "/input/history/:month",
     "/input/compare",
     "/api/save",
     "/api/publish",
@@ -28,5 +29,6 @@ export const config = {
     "/api/ai-highlights",
     "/api/reminder-recipients",
     "/api/send-reminder",
+    "/api/report-history",
   ],
 };

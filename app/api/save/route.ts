@@ -22,6 +22,6 @@ export async function POST(req: NextRequest) {
   }
 
   const data = normalizeReport(body?.data);
-  await upsertMonthlyReport(month, data);
+  await upsertMonthlyReport(month, data, role ?? "member");
   return NextResponse.json({ ok: true });
 }
