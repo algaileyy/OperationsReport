@@ -168,4 +168,20 @@ export function getTeam(key: string): TeamConfig | undefined {
   return TEAMS.find((t) => t.key === key);
 }
 
+/** Restricts which teams a named member can view/edit on /input — e.g. so Media Ingest staff
+ * don't see Media Desk's numbers. Only the names listed here are restricted; any other member
+ * (e.g. Nadeen) or an admin can access every team. */
+export const MEMBER_TEAM_ACCESS: Record<string, string[]> = {
+  Omar: ["archivingSupport"],
+  Ayman: ["mediaManagement"],
+  Ahmed: ["mediaIngest"],
+};
+
+/** Returns the team keys `name` may view/edit, or null if unrestricted (admins, and any member
+ * not listed in MEMBER_TEAM_ACCESS). */
+export function allowedTeamKeysFor(role: "admin" | "member", name: string): string[] | null {
+  if (role === "admin") return null;
+  return MEMBER_TEAM_ACCESS[name] ?? null;
+}
+
 export type TeamData = Record<string, number>;

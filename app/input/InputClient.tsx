@@ -6,7 +6,7 @@ import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import SourceNameField from "./SourceNameField";
 import { monthLabel } from "@/lib/months";
-import { TEAMS, type FieldConfig } from "@/lib/teams";
+import { TEAMS, allowedTeamKeysFor, type FieldConfig } from "@/lib/teams";
 import { sumSourceEntries, type MonthlyReport, type ReportHighlights, type SourceEntry } from "@/lib/report";
 import { formatFieldValue } from "@/lib/format";
 
@@ -51,6 +51,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 type Props = {
   role: "admin" | "member";
+  name: string;
   publishedMonth: string | null;
   monthsWithData: string[];
   defaultMonth: string;
@@ -60,6 +61,7 @@ type Props = {
 
 export default function InputClient({
   role,
+  name,
   publishedMonth,
   monthsWithData,
   defaultMonth,
@@ -68,6 +70,8 @@ export default function InputClient({
 }: Props) {
   const isAdmin = role === "admin";
   const router = useRouter();
+  const allowedTeamKeys = allowedTeamKeysFor(role, name);
+  const visibleTeams = allowedTeamKeys ? TEAMS.filter((t) => allowedTeamKeys.includes(t.key)) : TEAMS;
   const [month, setMonth] = useState(defaultMonth);
   const [data, setData] = useState<MonthlyReport>(initialData);
   const [loading, setLoading] = useState(false);
@@ -77,7 +81,7 @@ export default function InputClient({
   const [live, setLive] = useState(publishedMonth);
   const [publishMonth, setPublishMonth] = useState(publishedMonth ?? defaultMonth);
   const [publishing, setPublishing] = useState(false);
-  const [activeTeam, setActiveTeam] = useState(TEAMS[0].key);
+  const [activeTeam, setActiveTeam] = useState(visibleTeams[0]?.key ?? TEAMS[0].key);
 
   const [aiText, setAiText] = useState<Record<string, string>>({});
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
@@ -503,7 +507,7 @@ export default function InputClient({
           </section>
 
           <div className="flex flex-wrap gap-1 border-b" style={{ borderColor: "var(--border)" }}>
-            {TEAMS.map((team) => {
+            {visibleTeams.map((team) => {
               const accent = ACCENT_HEX[team.accent];
               const active = team.key === activeTeam;
               return (
@@ -524,7 +528,7 @@ export default function InputClient({
             })}
           </div>
 
-          {TEAMS.filter((team) => team.key === activeTeam).map((team) => {
+          {visibleTeams.filter((team) => team.key === activeTeam).map((team) => {
             const teamData = data.teams[team.key] ?? {};
             const accent = ACCENT_HEX[team.accent];
             return (

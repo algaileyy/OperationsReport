@@ -11,7 +11,7 @@ const fieldStyle = {
 
 // Must match the MEMBER_USERNAMES allowlist set on the server (lib/auth.ts checkMemberCredentials)
 // — this list only drives the dropdown, the server is what actually enforces who can sign in.
-const MEMBER_NAMES = ["Omar", "Ayman", "Nadeen", "Omaima"];
+const MEMBER_NAMES = ["Omar", "Ayman", "Nadeen", "Omaima", "Ahmed"];
 
 function LoginForm() {
   const router = useRouter();

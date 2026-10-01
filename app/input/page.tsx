@@ -11,7 +11,9 @@ export const dynamic = "force-dynamic";
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
 export default async function InputPage({ searchParams }: { searchParams: { month?: string } }) {
-  const role = (await verifySession(cookies().get(SESSION_COOKIE)?.value))?.role ?? "member";
+  const session = await verifySession(cookies().get(SESSION_COOKIE)?.value);
+  const role = session?.role ?? "member";
+  const name = session?.name ?? "";
   const [publishedMonth, monthsWithData, reminderRecipients] = await Promise.all([
     getPublishedMonth(),
     listMonthsWithData(),
@@ -30,6 +32,7 @@ export default async function InputPage({ searchParams }: { searchParams: { mont
       <InputNav />
       <InputClient
         role={role}
+        name={name}
         publishedMonth={publishedMonth}
         monthsWithData={monthsWithData}
         defaultMonth={defaultMonth}
