@@ -14,6 +14,15 @@ export function computeEditingMonth(now: Date = new Date()): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+/** The month that auto-publishes to the live report on the 25th of each month — the one just
+ * before the current calendar month, which has then had 25 days (the rest of its own month, plus
+ * the first 25 days after) to be finalized before going public. Called only from the 25th cron, so
+ * it doesn't need its own day-of-month check — "now" is simply whenever the cron fires. */
+export function computeAutoPublishMonth(now: Date = new Date()): string {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export function monthLabel(monthKey: string): string {
   const [year, month] = monthKey.split("-").map(Number);
   const d = new Date(Date.UTC(year, month - 1, 1));
