@@ -5,6 +5,8 @@
 export const SESSION_COOKIE = "ops_session";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+export type Role = "admin" | "member";
+
 function getSecret(): string {
   const secret = process.env.AUTH_SECRET;
   if (!secret) {
@@ -27,26 +29,43 @@ async function hmac(message: string): Promise<string> {
     .join("");
 }
 
-export async function createSessionToken(): Promise<string> {
+export async function createSessionToken(role: Role): Promise<string> {
   const expiresAt = Date.now() + SESSION_TTL_MS;
-  const signature = await hmac(String(expiresAt));
-  return `${expiresAt}.${signature}`;
+  const signature = await hmac(`${expiresAt}.${role}`);
+  return `${expiresAt}.${role}.${signature}`;
 }
 
-export async function verifySessionToken(token: string | undefined | null): Promise<boolean> {
-  if (!token) return false;
-  const [expiresAtRaw, signature] = token.split(".");
-  if (!expiresAtRaw || !signature) return false;
+/** Verifies the signature and expiry, and returns the role it was issued for — null if missing,
+ * expired, tampered with, or signed for neither known role. */
+export async function verifySession(token: string | undefined | null): Promise<Role | null> {
+  if (!token) return null;
+  const [expiresAtRaw, role, signature] = token.split(".");
+  if (!expiresAtRaw || !role || !signature) return null;
+  if (role !== "admin" && role !== "member") return null;
   const expiresAt = Number(expiresAtRaw);
-  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return false;
-  const expected = await hmac(expiresAtRaw);
-  return expected === signature;
+  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return null;
+  const expected = await hmac(`${expiresAtRaw}.${role}`);
+  return expected === signature ? role : null;
 }
 
-export function checkPassword(candidate: string): boolean {
-  const expected = process.env.INPUT_PASSWORD;
-  if (!expected) {
+/** Plain authed/not-authed check, for places (middleware) that don't need the role itself. */
+export async function verifySessionToken(token: string | undefined | null): Promise<boolean> {
+  return (await verifySession(token)) !== null;
+}
+
+/** Member sign-in is the shared password alone, same as always. Admin sign-in is a separate
+ * username + password pair (a distinct "Sign in as admin" path on the login page), not just a
+ * second password tried against the same field, so a member can't stumble into admin by guessing. */
+export function checkCredentials(username: string | undefined, password: string): Role | null {
+  if (username) {
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminUsername || !adminPassword) return null;
+    return username === adminUsername && password === adminPassword ? "admin" : null;
+  }
+  const memberPassword = process.env.INPUT_PASSWORD;
+  if (!memberPassword) {
     throw new Error("INPUT_PASSWORD environment variable is not set.");
   }
-  return candidate === expected;
+  return password === memberPassword ? "member" : null;
 }

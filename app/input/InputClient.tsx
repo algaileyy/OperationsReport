@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MonthPicker from "./MonthPicker";
+import SourceNameField from "./SourceNameField";
 import { monthLabel } from "@/lib/months";
 import { TEAMS, type FieldConfig } from "@/lib/teams";
 import { sumSourceEntries, type MonthlyReport, type ReportHighlights, type SourceEntry } from "@/lib/report";
@@ -49,6 +50,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 type Props = {
+  role: "admin" | "member";
   publishedMonth: string | null;
   monthsWithData: string[];
   defaultMonth: string;
@@ -57,12 +59,14 @@ type Props = {
 };
 
 export default function InputClient({
+  role,
   publishedMonth,
   monthsWithData,
   defaultMonth,
   initialData,
   initialRecipients,
 }: Props) {
+  const isAdmin = role === "admin";
   const router = useRouter();
   const [month, setMonth] = useState(defaultMonth);
   const [data, setData] = useState<MonthlyReport>(initialData);
@@ -300,6 +304,7 @@ export default function InputClient({
         </button>
       </div>
 
+      {isAdmin && (
       <section className="mb-8 rounded-lg border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
         <h2 className="mb-2 text-sm font-semibold" style={{ color: "var(--ink-primary)" }}>
           Live report month
@@ -319,7 +324,9 @@ export default function InputClient({
           </button>
         </div>
       </section>
+      )}
 
+      {isAdmin && (
       <section className="mb-8 rounded-lg border p-4" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
         <h2 className="mb-2 text-sm font-semibold" style={{ color: "var(--ink-primary)" }}>
           Team Reminders
@@ -385,9 +392,16 @@ export default function InputClient({
           )}
         </div>
       </section>
+      )}
 
       <div className="mb-6 flex items-end justify-between gap-3">
-        <MonthPicker value={month} onChange={loadMonth} markedMonths={monthsWithData} label="Editing month" />
+        {isAdmin ? (
+          <MonthPicker value={month} onChange={loadMonth} markedMonths={monthsWithData} label="Editing month" />
+        ) : (
+          <p className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+            Editing month: <strong style={{ color: "var(--ink-primary)" }}>{monthLabel(month)}</strong>
+          </p>
+        )}
         <Link href={`/input/preview?month=${month}`} className="text-sm underline" style={{ color: "var(--ink-secondary)" }}>
           Export this month&apos;s report
         </Link>
@@ -629,19 +643,16 @@ export default function InputClient({
                         <div className="mt-1 flex flex-col gap-2">
                           {entries.map((entry) => (
                             <div key={entry.id} className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                placeholder="Source, e.g. Atheer"
+                              <SourceNameField
+                                commonSources={sb.commonSources}
                                 value={entry.source}
-                                onChange={(e) =>
+                                onChange={(value) =>
                                   setSourceEntries(
                                     team.key,
                                     sb.key,
-                                    entries.map((x) => (x.id === entry.id ? { ...x, source: e.target.value } : x))
+                                    entries.map((x) => (x.id === entry.id ? { ...x, source: value } : x))
                                   )
                                 }
-                                className="flex-1 rounded-md border px-3 py-2 text-sm"
-                                style={inputStyle}
                               />
                               <input
                                 type="number"

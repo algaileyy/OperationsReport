@@ -1,7 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { sendMonthlyReminder } from "@/lib/email";
+import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const role = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (role !== "admin") {
+    return NextResponse.json({ error: "Admin only." }, { status: 403 });
+  }
+
   try {
     const result = await sendMonthlyReminder();
     if (result.sent === 0) {

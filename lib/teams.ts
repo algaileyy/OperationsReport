@@ -64,7 +64,13 @@ export type SourceBreakdownConfig = {
   /** Renders this breakdown's callout as a bold accent-colored badge in the pie card instead of
    * plain text — for the unit-bearing figures worth calling out at a glance. */
   highlight?: boolean;
+  /** Known recurring source names shown as a dropdown on /input instead of a free-text box — still
+   * lets someone add a one-off source that isn't in the list. */
+  commonSources?: string[];
 };
+
+const MEDIA_INGEST_COMMON_SOURCES = ["Atheer", "AJA", "AJD", "AJ360 ORIGINALS", "AJ+ AR", "AJ+ EN", "Licensed", "Syria Now"];
+const ARCHIVING_COMMON_SOURCES = ["AJ360", "Atheer", "Doha Debates", "Syria Now", "Sadeem"];
 
 export type TeamConfig = {
   key: string;
@@ -85,15 +91,15 @@ export const TEAMS: TeamConfig[] = [
       { key: "storageFreed", label: "Storage Freed", unitOptions: ["TB", "GB"] },
     ],
     sourceBreakdowns: [
-      { key: "catchUpContentReceived", label: "Catch-up Content Received", segment: "Catch-up Content" },
-      { key: "catchUpContentFailed", label: "Catch-up Content Failed", segment: "Catch-up Content" },
-      { key: "catchUpContentPassed", label: "Catch-up Content Passed", segment: "Catch-up Content" },
-      { key: "ingestedCatchUpContent", label: "Catch-up Content Ingested", segment: "Catch-up Content" },
-      { key: "archiveContentReceived", label: "Archive Content Received", segment: "Archive Content" },
-      { key: "archiveContentFailed", label: "Archive Content Failed", segment: "Archive Content" },
-      { key: "archiveContentPassed", label: "Archive Content Passed", segment: "Archive Content" },
-      { key: "ingestedArchiveContent", label: "Archive Content Ingested", segment: "Archive Content" },
-      { key: "contentSize", label: "Content Size", unitOptions: ["TB", "GB"] },
+      { key: "catchUpContentReceived", label: "Catch-up Content Received", segment: "Catch-up Content", commonSources: MEDIA_INGEST_COMMON_SOURCES },
+      { key: "catchUpContentFailed", label: "Catch-up Content Failed", segment: "Catch-up Content", commonSources: MEDIA_INGEST_COMMON_SOURCES },
+      { key: "catchUpContentPassed", label: "Catch-up Content Passed", segment: "Catch-up Content", commonSources: MEDIA_INGEST_COMMON_SOURCES },
+      { key: "ingestedCatchUpContent", label: "Catch-up Content Ingested", segment: "Catch-up Content", commonSources: MEDIA_INGEST_COMMON_SOURCES },
+      { key: "archiveContentReceived", label: "Archive Content Received", segment: "Archive Content", commonSources: MEDIA_INGEST_COMMON_SOURCES },
+      { key: "archiveContentFailed", label: "Archive Content Failed", segment: "Archive Content", commonSources: MEDIA_INGEST_COMMON_SOURCES },
+      { key: "archiveContentPassed", label: "Archive Content Passed", segment: "Archive Content", commonSources: MEDIA_INGEST_COMMON_SOURCES },
+      { key: "ingestedArchiveContent", label: "Archive Content Ingested", segment: "Archive Content", commonSources: MEDIA_INGEST_COMMON_SOURCES },
+      { key: "contentSize", label: "Content Size", unitOptions: ["TB", "GB"], commonSources: MEDIA_INGEST_COMMON_SOURCES },
       { key: "artworkAndBadgesIngested", label: "Artwork and Badges Ingested", segment: "Artwork & Thumbnails" },
       { key: "episodicThumbnails", label: "Episodic Thumbnails", segment: "Artwork & Thumbnails" },
     ],
@@ -151,9 +157,9 @@ export const TEAMS: TeamConfig[] = [
       { key: "revisioningBySource", label: "Re-versioning", segment: "Production Support Activities" },
       { key: "editingBySource", label: "Editing", segment: "Production Support Activities" },
       { key: "upscalingBySource", label: "Upscaling", segment: "Production Support Activities" },
-      { key: "archived", label: "Archived", unit: "TB", segment: "Archive & Storage", highlight: true },
-      { key: "archiveInProgress", label: "Archive In Progress", unit: "TB", segment: "Archive & Storage" },
-      { key: "storageFreed", label: "Storage Freed", unit: "TB", segment: "Archive & Storage", highlight: true },
+      { key: "archived", label: "Archived", unit: "TB", segment: "Archive & Storage", highlight: true, commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "archiveInProgress", label: "Archive In Progress", unit: "TB", segment: "Archive & Storage", commonSources: ARCHIVING_COMMON_SOURCES },
+      { key: "storageFreed", label: "Storage Freed", unit: "TB", segment: "Archive & Storage", highlight: true, commonSources: ARCHIVING_COMMON_SOURCES },
     ],
   },
 ];

@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getReminderRecipients, setReminderRecipients } from "@/lib/db";
+import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const role = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (role !== "admin") {
+    return NextResponse.json({ error: "Admin only." }, { status: 403 });
+  }
   const recipients = await getReminderRecipients();
   return NextResponse.json({ recipients });
 }
 
 export async function POST(req: NextRequest) {
+  const role = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (role !== "admin") {
+    return NextResponse.json({ error: "Admin only." }, { status: 403 });
+  }
+
   const body = await req.json().catch(() => null);
   const emails = body?.recipients;
 

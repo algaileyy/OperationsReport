@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setPublishedMonth } from "@/lib/db";
+import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
 export async function POST(req: NextRequest) {
+  const role = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (role !== "admin") {
+    return NextResponse.json({ error: "Only an admin can publish the live report." }, { status: 403 });
+  }
+
   const body = await req.json().catch(() => null);
   const month = body?.month;
 

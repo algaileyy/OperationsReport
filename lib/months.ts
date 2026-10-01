@@ -5,6 +5,15 @@ export function currentMonthKey(): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+/** The month non-admins are allowed to edit: the current calendar month, except from the 25th
+ * onward, when it rolls forward to next month (so the team can start entering next month's numbers
+ * a few days early instead of waiting for the 1st). */
+export function computeEditingMonth(now: Date = new Date()): string {
+  const monthOffset = now.getUTCDate() >= 25 ? 1 : 0;
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + monthOffset, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export function monthLabel(monthKey: string): string {
   const [year, month] = monthKey.split("-").map(Number);
   const d = new Date(Date.UTC(year, month - 1, 1));
