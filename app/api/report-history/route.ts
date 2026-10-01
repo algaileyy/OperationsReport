@@ -7,8 +7,8 @@ const MONTH_RE = /^\d{4}-\d{2}$/;
 /** Admin-only: ?month=YYYY-MM lists that month's save history; ?id=N returns one entry's full
  * saved data (for viewing or restoring). */
 export async function GET(req: NextRequest) {
-  const role = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  if (role !== "admin") {
+  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (session?.role !== "admin") {
     return NextResponse.json({ error: "Admin only." }, { status: 403 });
   }
 

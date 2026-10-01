@@ -9,8 +9,8 @@ import HistoryDetailClient from "./HistoryDetailClient";
 export const dynamic = "force-dynamic";
 
 export default async function MonthHistoryPage({ params }: { params: { month: string } }) {
-  const role = await verifySession(cookies().get(SESSION_COOKIE)?.value);
-  if (role !== "admin") {
+  const session = await verifySession(cookies().get(SESSION_COOKIE)?.value);
+  if (session?.role !== "admin") {
     redirect("/input/history");
   }
 

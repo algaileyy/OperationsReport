@@ -6,6 +6,7 @@ export const SESSION_COOKIE = "ops_session";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 export type Role = "admin" | "member";
+export type Session = { role: Role; name: string };
 
 function getSecret(): string {
   const secret = process.env.AUTH_SECRET;
@@ -29,43 +30,69 @@ async function hmac(message: string): Promise<string> {
     .join("");
 }
 
-export async function createSessionToken(role: Role): Promise<string> {
-  const expiresAt = Date.now() + SESSION_TTL_MS;
-  const signature = await hmac(`${expiresAt}.${role}`);
-  return `${expiresAt}.${role}.${signature}`;
+// Dot-delimited tokens need the name segment guaranteed free of dots — base64 never produces one.
+function encodeName(name: string): string {
+  return btoa(encodeURIComponent(name));
+}
+function decodeName(encoded: string): string | null {
+  try {
+    return decodeURIComponent(atob(encoded));
+  } catch {
+    return null;
+  }
 }
 
-/** Verifies the signature and expiry, and returns the role it was issued for — null if missing,
- * expired, tampered with, or signed for neither known role. */
-export async function verifySession(token: string | undefined | null): Promise<Role | null> {
+export async function createSessionToken(session: Session): Promise<string> {
+  const expiresAt = Date.now() + SESSION_TTL_MS;
+  const payload = `${expiresAt}.${session.role}.${encodeName(session.name)}`;
+  const signature = await hmac(payload);
+  return `${payload}.${signature}`;
+}
+
+/** Verifies the signature and expiry, and returns who the session is for — null if missing,
+ * expired, tampered with, or malformed. */
+export async function verifySession(token: string | undefined | null): Promise<Session | null> {
   if (!token) return null;
-  const [expiresAtRaw, role, signature] = token.split(".");
-  if (!expiresAtRaw || !role || !signature) return null;
+  const [expiresAtRaw, role, encodedName, signature] = token.split(".");
+  if (!expiresAtRaw || !role || !encodedName || !signature) return null;
   if (role !== "admin" && role !== "member") return null;
   const expiresAt = Number(expiresAtRaw);
   if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return null;
-  const expected = await hmac(`${expiresAtRaw}.${role}`);
-  return expected === signature ? role : null;
+  const payload = `${expiresAtRaw}.${role}.${encodedName}`;
+  const expected = await hmac(payload);
+  if (expected !== signature) return null;
+  const name = decodeName(encodedName);
+  if (!name) return null;
+  return { role, name };
 }
 
-/** Plain authed/not-authed check, for places (middleware) that don't need the role itself. */
+/** Plain authed/not-authed check, for places (middleware) that don't need who it is. */
 export async function verifySessionToken(token: string | undefined | null): Promise<boolean> {
   return (await verifySession(token)) !== null;
 }
 
-/** Member sign-in is the shared password alone, same as always. Admin sign-in is a separate
- * username + password pair (a distinct "Sign in as admin" path on the login page), not just a
- * second password tried against the same field, so a member can't stumble into admin by guessing. */
-export function checkCredentials(username: string | undefined, password: string): Role | null {
-  if (username) {
-    const adminUsername = process.env.ADMIN_USERNAME;
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    if (!adminUsername || !adminPassword) return null;
-    return username === adminUsername && password === adminPassword ? "admin" : null;
-  }
+export function checkAdminCredentials(username: string, password: string): Session | null {
+  const adminUsername = process.env.ADMIN_USERNAME;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminUsername || !adminPassword) return null;
+  return username === adminUsername && password === adminPassword ? { role: "admin", name: username } : null;
+}
+
+/** Each team member signs in with their own name (picked from MEMBER_USERNAMES, a comma-separated
+ * allowlist) plus the one shared password — not a generic anonymous "team" login — so every save
+ * can be attributed to a real person in the history log. Matching is case-insensitive, but the
+ * returned name is always the allowlist's canonical casing, so history stays consistent regardless
+ * of how someone typed their name at login. */
+export function checkMemberCredentials(name: string, password: string): Session | null {
   const memberPassword = process.env.INPUT_PASSWORD;
   if (!memberPassword) {
     throw new Error("INPUT_PASSWORD environment variable is not set.");
   }
-  return password === memberPassword ? "member" : null;
+  const allowedNames = (process.env.MEMBER_USERNAMES ?? "")
+    .split(",")
+    .map((n) => n.trim())
+    .filter(Boolean);
+  const match = allowedNames.find((n) => n.toLowerCase() === name.trim().toLowerCase());
+  if (!match) return null;
+  return password === memberPassword ? { role: "member", name: match } : null;
 }

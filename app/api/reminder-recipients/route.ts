@@ -5,8 +5,8 @@ import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function GET(req: NextRequest) {
-  const role = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  if (role !== "admin") {
+  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (session?.role !== "admin") {
     return NextResponse.json({ error: "Admin only." }, { status: 403 });
   }
   const recipients = await getReminderRecipients();
@@ -14,8 +14,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const role = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  if (role !== "admin") {
+  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (session?.role !== "admin") {
     return NextResponse.json({ error: "Admin only." }, { status: 403 });
   }
 

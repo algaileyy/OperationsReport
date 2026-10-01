@@ -9,10 +9,15 @@ const fieldStyle = {
   color: "var(--ink-primary)",
 } as const;
 
+// Must match the MEMBER_USERNAMES allowlist set on the server (lib/auth.ts checkMemberCredentials)
+// — this list only drives the dropdown, the server is what actually enforces who can sign in.
+const MEMBER_NAMES = ["Omar", "Ayman", "Nadeen", "Omaima"];
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const [adminMode, setAdminMode] = useState(false);
+  const [name, setName] = useState(MEMBER_NAMES[0]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +30,7 @@ function LoginForm() {
     const res = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(adminMode ? { username, password } : { password }),
+      body: JSON.stringify(adminMode ? { mode: "admin", username, password } : { mode: "member", name, password }),
     });
     setLoading(false);
     if (res.ok) {
@@ -43,12 +48,10 @@ function LoginForm() {
         {adminMode ? "Admin sign in" : "Team sign in"}
       </h1>
       <p className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-        {adminMode
-          ? "Enter the admin username and password."
-          : "Enter the shared team password to report this month's numbers."}
+        {adminMode ? "Enter the admin username and password." : "Pick your name and enter the team password."}
       </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        {adminMode && (
+        {adminMode ? (
           <input
             type="text"
             autoFocus
@@ -59,10 +62,22 @@ function LoginForm() {
             className="rounded-md border px-3 py-2 text-sm outline-none"
             style={fieldStyle}
           />
+        ) : (
+          <select
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="rounded-md border px-3 py-2 text-sm outline-none"
+            style={fieldStyle}
+          >
+            {MEMBER_NAMES.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
         )}
         <input
           type="password"
-          autoFocus={!adminMode}
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

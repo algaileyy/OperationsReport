@@ -8,8 +8,8 @@ import InputNav from "../InputNav";
 export const dynamic = "force-dynamic";
 
 export default async function HistoryPage() {
-  const role = await verifySession(cookies().get(SESSION_COOKIE)?.value);
-  const isAdmin = role === "admin";
+  const session = await verifySession(cookies().get(SESSION_COOKIE)?.value);
+  const isAdmin = session?.role === "admin";
   const [months, publishedMonth] = await Promise.all([listMonthsWithData(), getPublishedMonth()]);
 
   const rows = await Promise.all(

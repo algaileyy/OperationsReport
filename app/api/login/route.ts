@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_COOKIE, checkCredentials, createSessionToken } from "@/lib/auth";
+import { SESSION_COOKIE, checkAdminCredentials, checkMemberCredentials, createSessionToken } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
-  const { username, password } = await req.json().catch(() => ({ username: undefined, password: "" }));
+  const body = await req.json().catch(() => null);
+  const password = body?.password;
 
-  if (typeof password !== "string" || (username != null && typeof username !== "string")) {
+  if (typeof password !== "string") {
     return NextResponse.json({ error: "Incorrect password." }, { status: 401 });
   }
 
-  const role = checkCredentials(username || undefined, password);
-  if (!role) {
+  const session =
+    body?.mode === "admin"
+      ? typeof body.username === "string"
+        ? checkAdminCredentials(body.username, password)
+        : null
+      : typeof body?.name === "string"
+        ? checkMemberCredentials(body.name, password)
+        : null;
+
+  if (!session) {
     return NextResponse.json({ error: "Incorrect password." }, { status: 401 });
   }
 
-  const token = await createSessionToken(role);
+  const token = await createSessionToken(session);
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,

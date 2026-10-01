@@ -5,8 +5,8 @@ import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
 export async function POST(req: NextRequest) {
-  const role = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  if (role !== "admin") {
+  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (session?.role !== "admin") {
     return NextResponse.json({ error: "Only an admin can publish the live report." }, { status: 403 });
   }
 
