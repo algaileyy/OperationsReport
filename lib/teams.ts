@@ -21,6 +21,11 @@ export type FieldConfig = {
   /** Renders this field's callout as a bold accent-colored badge in the pie card instead of
    * plain text — for the unit-bearing figures worth calling out at a glance. */
   highlight?: boolean;
+  /** Renders two small "Hours"/"Minutes" inputs instead of one plain number box — for an "H"-unit
+   * field where whoever enters data naturally thinks in hours and minutes (e.g. "6h 30m"), not a
+   * decimal. The two combine into the same decimal-hours value everything else (the report,
+   * totals, exports) already expects, so nothing downstream needs to know this field is special. */
+  hoursMinutesInput?: boolean;
 };
 
 /**
@@ -87,7 +92,7 @@ export const TEAMS: TeamConfig[] = [
     name: "Media Ingest",
     accent: "violet",
     fields: [
-      { key: "qualityControlCompleted", label: "Quality Control Completed in Hours", unit: "H", highlight: true },
+      { key: "qualityControlCompleted", label: "Quality Control Completed in Hours", unit: "H", highlight: true, hoursMinutesInput: true },
       { key: "storageFreed", label: "Storage Freed", unitOptions: ["TB", "GB"] },
     ],
     sourceBreakdowns: [
@@ -144,7 +149,7 @@ export const TEAMS: TeamConfig[] = [
       { key: "textlessCleansReceived", label: "Received QC", segmentSlot: { segment: "Textless/Cleans QC", position: "start" } },
       { key: "textlessCleansInProgress", label: "QC in Progress", segmentSlot: { segment: "Textless/Cleans QC", position: "end" } },
       { key: "textlessCleansSize", label: "Size", unit: "GB", segmentSlot: { segment: "Textless/Cleans QC", position: "end" } },
-      { key: "textlessCleansHours", label: "Hours of QC", unit: "H", segmentSlot: { segment: "Textless/Cleans QC", position: "end" } },
+      { key: "textlessCleansHours", label: "Hours of QC", unit: "H", segmentSlot: { segment: "Textless/Cleans QC", position: "end" }, hoursMinutesInput: true },
     ],
     sourceBreakdowns: [
       { key: "textlessCleansPassedQC", label: "Passed QC", segment: "Textless/Cleans QC", commonSources: ARCHIVING_COMMON_SOURCES },

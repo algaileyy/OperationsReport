@@ -6,6 +6,7 @@ import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import SourceNameField from "./SourceNameField";
 import AutoGrowTextarea from "./AutoGrowTextarea";
+import HoursMinutesField from "./HoursMinutesField";
 import { monthLabel } from "@/lib/months";
 import {
   TEAMS,
@@ -643,31 +644,38 @@ export default function InputClient({
                           {field.label}
                           {field.unit && ` (${field.unit})`}
                         </span>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min={0}
-                            inputMode="numeric"
-                            value={teamData[field.key] ?? ""}
-                            onChange={(e) => setField(team.key, field.key, e.target.value)}
-                            className="flex-1 rounded-md border px-3 py-2 text-sm"
-                            style={inputStyle}
+                        {field.hoursMinutesInput ? (
+                          <HoursMinutesField
+                            value={teamData[field.key] ?? 0}
+                            onChange={(v) => setField(team.key, field.key, String(v))}
                           />
-                          {field.unitOptions && (
-                            <select
-                              value={data.fieldUnits[team.key]?.[field.key] ?? field.unitOptions[0]}
-                              onChange={(e) => setFieldUnit(team.key, field.key, e.target.value)}
-                              className="rounded-md border px-2 py-2 text-sm"
+                        ) : (
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              min={0}
+                              inputMode="numeric"
+                              value={teamData[field.key] ?? ""}
+                              onChange={(e) => setField(team.key, field.key, e.target.value)}
+                              className="flex-1 rounded-md border px-3 py-2 text-sm"
                               style={inputStyle}
-                            >
-                              {field.unitOptions.map((u) => (
-                                <option key={u} value={u}>
-                                  {u}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
+                            />
+                            {field.unitOptions && (
+                              <select
+                                value={data.fieldUnits[team.key]?.[field.key] ?? field.unitOptions[0]}
+                                onChange={(e) => setFieldUnit(team.key, field.key, e.target.value)}
+                                className="rounded-md border px-2 py-2 text-sm"
+                                style={inputStyle}
+                              >
+                                {field.unitOptions.map((u) => (
+                                  <option key={u} value={u}>
+                                    {u}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        )}
                       </label>
                     ))}
                 </div>
@@ -703,15 +711,22 @@ export default function InputClient({
                           {field.label}
                           {field.unit && ` (${field.unit})`}
                         </span>
-                        <input
-                          type="number"
-                          min={0}
-                          inputMode="numeric"
-                          value={teamData[field.key] ?? ""}
-                          onChange={(e) => setField(team.key, field.key, e.target.value)}
-                          className="w-full max-w-xs rounded-md border px-3 py-2 text-sm"
-                          style={inputStyle}
-                        />
+                        {field.hoursMinutesInput ? (
+                          <HoursMinutesField
+                            value={teamData[field.key] ?? 0}
+                            onChange={(v) => setField(team.key, field.key, String(v))}
+                          />
+                        ) : (
+                          <input
+                            type="number"
+                            min={0}
+                            inputMode="numeric"
+                            value={teamData[field.key] ?? ""}
+                            onChange={(e) => setField(team.key, field.key, e.target.value)}
+                            className="w-full max-w-xs rounded-md border px-3 py-2 text-sm"
+                            style={inputStyle}
+                          />
+                        )}
                       </label>
                     </div>
                   );
