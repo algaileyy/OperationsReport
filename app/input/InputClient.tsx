@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import SourceNameField from "./SourceNameField";
+import AutoGrowTextarea from "./AutoGrowTextarea";
 import { monthLabel } from "@/lib/months";
 import {
   TEAMS,
@@ -511,7 +512,7 @@ export default function InputClient({
                         <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                           Main Achievements
                         </span>
-                        <textarea
+                        <AutoGrowTextarea
                           value={h.mainAchievements}
                           onChange={(e) => setHighlight(memberName, "mainAchievements", e.target.value)}
                           rows={3}
@@ -524,7 +525,7 @@ export default function InputClient({
                         <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                           Challenges
                         </span>
-                        <textarea
+                        <AutoGrowTextarea
                           value={h.challenges}
                           onChange={(e) => setHighlight(memberName, "challenges", e.target.value)}
                           rows={3}
@@ -537,7 +538,7 @@ export default function InputClient({
                         <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                           New Initiatives
                         </span>
-                        <textarea
+                        <AutoGrowTextarea
                           value={h.newInitiatives}
                           onChange={(e) => setHighlight(memberName, "newInitiatives", e.target.value)}
                           rows={3}
@@ -554,7 +555,7 @@ export default function InputClient({
                 <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                   General Notes
                 </span>
-                <textarea
+                <AutoGrowTextarea
                   value={data.generalNotes}
                   onChange={(e) => setGeneralNotes(e.target.value)}
                   rows={3}
@@ -882,7 +883,7 @@ export default function InputClient({
                   <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                     Notes
                   </span>
-                  <textarea
+                  <AutoGrowTextarea
                     value={data.notes?.[team.key] ?? ""}
                     onChange={(e) => setNote(team.key, e.target.value)}
                     rows={2}
@@ -898,7 +899,7 @@ export default function InputClient({
                       <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                         Describe this month in plain English, and AI will fill in the numbers below.
                       </span>
-                      <textarea
+                      <AutoGrowTextarea
                         value={aiText[team.key] ?? ""}
                         onChange={(e) => setAiText((s) => ({ ...s, [team.key]: e.target.value }))}
                         rows={4}
