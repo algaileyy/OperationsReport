@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { MEMBER_NAMES } from "@/lib/teams";
 
 const fieldStyle = {
   borderColor: "var(--border)",
@@ -9,9 +10,8 @@ const fieldStyle = {
   color: "var(--ink-primary)",
 } as const;
 
-// Must match the MEMBER_USERNAMES allowlist set on the server (lib/auth.ts checkMemberCredentials)
-// — this list only drives the dropdown, the server is what actually enforces who can sign in.
-const MEMBER_NAMES = ["Omar", "Ayman", "Nadeen", "Omaima", "Ahmed"];
+// MEMBER_NAMES only drives the dropdown — the server's MEMBER_USERNAMES env var (lib/auth.ts
+// checkMemberCredentials) is what actually enforces who can sign in, and must be kept in sync.
 
 function LoginForm() {
   const router = useRouter();

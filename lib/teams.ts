@@ -184,4 +184,18 @@ export function allowedTeamKeysFor(role: "admin" | "member", name: string): stri
   return MEMBER_TEAM_ACCESS[name] ?? null;
 }
 
+/** Every named team-member login — the single source of truth for the login page's name dropdown
+ * and for whose Report Highlights entry exists. Must be kept in sync with the server's
+ * MEMBER_USERNAMES env var. */
+export const MEMBER_NAMES = ["Omar", "Ayman", "Nadeen", "Omaima", "Ahmed"];
+
+/** Beyond admins, only these names can see and edit every member's Report Highlights — everyone
+ * else only sees/edits their own, so one person's edit can't accidentally wipe out someone else's
+ * Main Achievements, Challenges, or New Initiatives. */
+const HIGHLIGHTS_FULL_ACCESS_NAMES = ["Omaima"];
+
+export function hasFullHighlightsAccess(role: "admin" | "member", name: string): boolean {
+  return role === "admin" || HIGHLIGHTS_FULL_ACCESS_NAMES.includes(name);
+}
+
 export type TeamData = Record<string, number>;

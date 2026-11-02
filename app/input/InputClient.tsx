@@ -6,9 +6,18 @@ import Link from "next/link";
 import MonthPicker from "./MonthPicker";
 import SourceNameField from "./SourceNameField";
 import { monthLabel } from "@/lib/months";
-import { TEAMS, allowedTeamKeysFor, ARCHIVING_COMMON_SOURCES, type FieldConfig, type SourceBreakdownConfig } from "@/lib/teams";
+import {
+  TEAMS,
+  allowedTeamKeysFor,
+  hasFullHighlightsAccess,
+  ARCHIVING_COMMON_SOURCES,
+  MEMBER_NAMES,
+  type FieldConfig,
+  type SourceBreakdownConfig,
+} from "@/lib/teams";
 import {
   CUSTOM_ACTIVITY_TEAM_KEY,
+  LEGACY_HIGHLIGHTS_KEY,
   sumSourceEntries,
   type CustomActivity,
   type MonthlyReport,
@@ -81,8 +90,19 @@ export default function InputClient({
   const router = useRouter();
   const allowedTeamKeys = allowedTeamKeysFor(role, name);
   const visibleTeams = allowedTeamKeys ? TEAMS.filter((t) => allowedTeamKeys.includes(t.key)) : TEAMS;
+  const canSeeAllHighlights = hasFullHighlightsAccess(role, name);
   const [month, setMonth] = useState(defaultMonth);
   const [data, setData] = useState<MonthlyReport>(initialData);
+  // Everyone else only ever sees their own Highlights entry, so an edit can't accidentally wipe
+  // out someone else's — admin and Omaima see every member's (plus any pre-existing legacy entry,
+  // only shown once it actually has content, so it doesn't clutter every month going forward).
+  const legacyHighlights = data.highlights[LEGACY_HIGHLIGHTS_KEY];
+  const legacyHasContent = Boolean(
+    legacyHighlights && (legacyHighlights.mainAchievements || legacyHighlights.challenges || legacyHighlights.newInitiatives)
+  );
+  const visibleHighlightNames = canSeeAllHighlights
+    ? [...MEMBER_NAMES, ...(legacyHasContent ? [LEGACY_HIGHLIGHTS_KEY] : [])]
+    : [name];
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
@@ -102,7 +122,7 @@ export default function InputClient({
   const [aiModalTeam, setAiModalTeam] = useState<string | null>(null);
   const [highlightsLoading, setHighlightsLoading] = useState(false);
   const [highlightsError, setHighlightsError] = useState<string | null>(null);
-  const [highlightsModalOpen, setHighlightsModalOpen] = useState(false);
+  const [highlightsModalMember, setHighlightsModalMember] = useState<string | null>(null);
 
   const [recipients, setRecipients] = useState<{ id: string; email: string }[]>(
     initialRecipients.map((email) => ({ id: newId("rcpt"), email }))
@@ -187,10 +207,16 @@ export default function InputClient({
     }));
   }
 
-  function setHighlight(field: keyof ReportHighlights, value: string) {
+  function setHighlight(memberName: string, field: keyof ReportHighlights, value: string) {
     setData((d) => ({
       ...d,
-      highlights: { ...d.highlights, [field]: value },
+      highlights: {
+        ...d.highlights,
+        [memberName]: {
+          ...(d.highlights[memberName] ?? { mainAchievements: "", challenges: "", newInitiatives: "" }),
+          [field]: value,
+        },
+      },
     }));
   }
 
@@ -274,7 +300,7 @@ export default function InputClient({
     }
   }
 
-  async function onAiDraftHighlights() {
+  async function onAiDraftHighlights(memberName: string) {
     setHighlightsLoading(true);
     setHighlightsError(null);
     try {
@@ -285,7 +311,7 @@ export default function InputClient({
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "AI draft failed.");
-      setData((d) => ({ ...d, highlights: body.data }));
+      setData((d) => ({ ...d, highlights: { ...d.highlights, [memberName]: body.data } }));
     } catch (err) {
       setHighlightsError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -454,59 +480,76 @@ export default function InputClient({
       ) : (
         <div className="flex flex-col gap-6">
           <section className="rounded-lg border p-5" style={{ borderColor: "var(--border)", background: "var(--surface)" }}>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold" style={{ color: "var(--ink-primary)" }}>
-                Report Highlights
-              </h2>
-              <button
-                type="button"
-                onClick={() => setHighlightsModalOpen(true)}
-                className="rounded-md border px-3 py-1.5 text-sm font-medium"
-                style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
-              >
-                ✨ Draft with AI
-              </button>
-            </div>
+            <h2 className="mb-1 text-base font-semibold" style={{ color: "var(--ink-primary)" }}>
+              Report Highlights
+            </h2>
+            <p className="mb-4 text-xs" style={{ color: "var(--ink-muted)" }}>
+              {canSeeAllHighlights
+                ? "Each person's entry is separate — editing one never changes anyone else's."
+                : "This is your own entry — other team members' Highlights are separate and you can't edit theirs."}
+            </p>
             <div className="flex flex-col gap-4">
-              <label className="flex flex-col gap-1">
-                <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                  Main Achievements
-                </span>
-                <textarea
-                  value={data.highlights.mainAchievements}
-                  onChange={(e) => setHighlight("mainAchievements", e.target.value)}
-                  rows={3}
-                  placeholder="What went well this month…"
-                  className="rounded-md border px-3 py-2 text-sm"
-                  style={inputStyle}
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                  Challenges
-                </span>
-                <textarea
-                  value={data.highlights.challenges}
-                  onChange={(e) => setHighlight("challenges", e.target.value)}
-                  rows={3}
-                  placeholder="What was difficult or blocked this month…"
-                  className="rounded-md border px-3 py-2 text-sm"
-                  style={inputStyle}
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
-                  New Initiatives
-                </span>
-                <textarea
-                  value={data.highlights.newInitiatives}
-                  onChange={(e) => setHighlight("newInitiatives", e.target.value)}
-                  rows={3}
-                  placeholder="What's starting up or planned…"
-                  className="rounded-md border px-3 py-2 text-sm"
-                  style={inputStyle}
-                />
-              </label>
+              {visibleHighlightNames.map((memberName) => {
+                const h = data.highlights[memberName] ?? { mainAchievements: "", challenges: "", newInitiatives: "" };
+                return (
+                  <div key={memberName} className="rounded-md border p-4" style={{ borderColor: "var(--border)" }}>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-semibold" style={{ color: "var(--ink-primary)" }}>
+                        {visibleHighlightNames.length > 1 ? memberName : "Your Highlights"}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setHighlightsModalMember(memberName)}
+                        className="rounded-md border px-3 py-1.5 text-sm font-medium"
+                        style={{ borderColor: "var(--border)", color: "var(--ink-secondary)" }}
+                      >
+                        ✨ Draft with AI
+                      </button>
+                    </div>
+                    <div className="flex flex-col gap-4">
+                      <label className="flex flex-col gap-1">
+                        <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                          Main Achievements
+                        </span>
+                        <textarea
+                          value={h.mainAchievements}
+                          onChange={(e) => setHighlight(memberName, "mainAchievements", e.target.value)}
+                          rows={3}
+                          placeholder="What went well this month…"
+                          className="rounded-md border px-3 py-2 text-sm"
+                          style={inputStyle}
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                          Challenges
+                        </span>
+                        <textarea
+                          value={h.challenges}
+                          onChange={(e) => setHighlight(memberName, "challenges", e.target.value)}
+                          rows={3}
+                          placeholder="What was difficult or blocked this month…"
+                          className="rounded-md border px-3 py-2 text-sm"
+                          style={inputStyle}
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
+                          New Initiatives
+                        </span>
+                        <textarea
+                          value={h.newInitiatives}
+                          onChange={(e) => setHighlight(memberName, "newInitiatives", e.target.value)}
+                          rows={3}
+                          placeholder="What's starting up or planned…"
+                          className="rounded-md border px-3 py-2 text-sm"
+                          style={inputStyle}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
               <label className="flex flex-col gap-1">
                 <span className="text-sm" style={{ color: "var(--ink-secondary)" }}>
                   General Notes
@@ -896,11 +939,11 @@ export default function InputClient({
             );
           })}
 
-          {highlightsModalOpen && (
-            <Modal title="Draft Highlights with AI" onClose={() => setHighlightsModalOpen(false)}>
+          {highlightsModalMember && (
+            <Modal title={`Draft Highlights with AI — ${highlightsModalMember}`} onClose={() => setHighlightsModalMember(null)}>
               <p className="mb-3 text-sm" style={{ color: "var(--ink-secondary)" }}>
                 Uses this month&apos;s saved numbers and notes across all teams to draft Main Achievements,
-                Challenges, and New Initiatives.
+                Challenges, and New Initiatives for this entry.
               </p>
               {highlightsError && (
                 <p className="mb-3 text-sm" style={{ color: "#d03b3b" }}>
@@ -909,7 +952,7 @@ export default function InputClient({
               )}
               <button
                 type="button"
-                onClick={onAiDraftHighlights}
+                onClick={() => onAiDraftHighlights(highlightsModalMember)}
                 disabled={highlightsLoading}
                 className="rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
                 style={{ background: "#2a78d6" }}

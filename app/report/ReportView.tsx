@@ -1,7 +1,7 @@
 import { monthRangeLabel } from "@/lib/months";
 import { formatFieldValue } from "@/lib/format";
 import { TEAMS, getTeam, type FieldConfig, type SourceBreakdownConfig, type TeamConfig, type TeamData } from "@/lib/teams";
-import { sumSourceEntries, type CustomActivity, type MonthlyReport, type SourceEntry } from "@/lib/report";
+import { mergeHighlights, sumSourceEntries, type CustomActivity, type MonthlyReport, type SourceEntry } from "@/lib/report";
 import GroupRow, { InfoIcon, RowTree, type TreeNode } from "./GroupRow";
 import ExportButton from "./ExportButton";
 import InteractivePie from "./InteractivePie";
@@ -241,8 +241,8 @@ function GlanceCard({
 }
 
 function ExecutiveSummary({ report }: { report: MonthlyReport }) {
-  const hasHighlights =
-    report.highlights.mainAchievements || report.highlights.challenges || report.highlights.newInitiatives;
+  const highlights = mergeHighlights(report.highlights);
+  const hasHighlights = highlights.mainAchievements || highlights.challenges || highlights.newInitiatives;
 
   return (
     <section
@@ -286,14 +286,14 @@ function ExecutiveSummary({ report }: { report: MonthlyReport }) {
             className="grid gap-x-6 gap-y-4 rounded-xl p-4 sm:grid-cols-3 print:p-3"
             style={{ background: "rgba(0,0,0,0.12)" }}
           >
-            {report.highlights.mainAchievements && (
-              <HighlightBlock color={ACCENT_GREEN} label="Main Achievements" text={report.highlights.mainAchievements} />
+            {highlights.mainAchievements && (
+              <HighlightBlock color={ACCENT_GREEN} label="Main Achievements" text={highlights.mainAchievements} />
             )}
-            {report.highlights.challenges && (
-              <HighlightBlock color={ACCENT_AMBER} label="Challenges" text={report.highlights.challenges} />
+            {highlights.challenges && (
+              <HighlightBlock color={ACCENT_AMBER} label="Challenges" text={highlights.challenges} />
             )}
-            {report.highlights.newInitiatives && (
-              <HighlightBlock color={ACCENT_CYAN} label="New Initiatives" text={report.highlights.newInitiatives} />
+            {highlights.newInitiatives && (
+              <HighlightBlock color={ACCENT_CYAN} label="New Initiatives" text={highlights.newInitiatives} />
             )}
           </div>
         </>

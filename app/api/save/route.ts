@@ -3,7 +3,7 @@ import { emptyReport, normalizeReport } from "@/lib/report";
 import { getCustomActivities, getMonthlyReport, upsertMonthlyReport } from "@/lib/db";
 import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 import { computeEditingMonth } from "@/lib/months";
-import { TEAMS, allowedTeamKeysFor } from "@/lib/teams";
+import { TEAMS, allowedTeamKeysFor, hasFullHighlightsAccess } from "@/lib/teams";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
@@ -29,19 +29,34 @@ export async function POST(req: NextRequest) {
   const customActivities = await getCustomActivities();
   const data = normalizeReport(body?.data, customActivities);
 
-  // A member restricted to certain teams (e.g. Omar -> Digital Archive & Production Support only)
-  // can't touch other teams' sections even via a direct request — whatever they submit for a team
-  // they're not allowed to edit is discarded in favor of what's actually saved for it already.
   const allowedKeys = allowedTeamKeysFor(session.role, session.name);
-  if (allowedKeys) {
+  const fullHighlightsAccess = hasFullHighlightsAccess(session.role, session.name);
+  if (allowedKeys || !fullHighlightsAccess) {
     const existing = (await getMonthlyReport(month)) ?? emptyReport(customActivities);
-    for (const team of TEAMS) {
-      if (!allowedKeys.includes(team.key)) {
-        data.teams[team.key] = existing.teams[team.key];
-        data.notes[team.key] = existing.notes[team.key];
-        data.sourceBreakdowns[team.key] = existing.sourceBreakdowns[team.key];
-        data.fieldUnits[team.key] = existing.fieldUnits[team.key];
-        data.teamTotalOverrides[team.key] = existing.teamTotalOverrides[team.key];
+
+    // A member restricted to certain teams (e.g. Omar -> Digital Archive & Production Support
+    // only) can't touch other teams' sections even via a direct request — whatever they submit
+    // for a team they're not allowed to edit is discarded in favor of what's actually saved
+    // already.
+    if (allowedKeys) {
+      for (const team of TEAMS) {
+        if (!allowedKeys.includes(team.key)) {
+          data.teams[team.key] = existing.teams[team.key];
+          data.notes[team.key] = existing.notes[team.key];
+          data.sourceBreakdowns[team.key] = existing.sourceBreakdowns[team.key];
+          data.fieldUnits[team.key] = existing.fieldUnits[team.key];
+          data.teamTotalOverrides[team.key] = existing.teamTotalOverrides[team.key];
+        }
+      }
+    }
+
+    // Same idea for Report Highlights: without full access (admin, Omaima), a member can only
+    // ever save their own named entry — anything submitted for someone else's is discarded.
+    if (!fullHighlightsAccess) {
+      for (const key of Object.keys(data.highlights)) {
+        if (key !== session.name) {
+          data.highlights[key] = existing.highlights[key] ?? data.highlights[key];
+        }
       }
     }
   }

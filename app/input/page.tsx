@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { getCustomActivities, getMonthlyReport, getPublishedMonth, getReminderRecipients, listMonthsWithData } from "@/lib/db";
 import { computeEditingMonth } from "@/lib/months";
-import { emptyReport } from "@/lib/report";
+import { emptyReport, visibleHighlights } from "@/lib/report";
 import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 import InputNav from "./InputNav";
 import InputClient from "./InputClient";
@@ -26,7 +26,8 @@ export default async function InputPage({ searchParams }: { searchParams: { mont
   const requestedMonth = searchParams.month && MONTH_RE.test(searchParams.month) ? searchParams.month : null;
   const defaultMonth =
     role === "admin" ? requestedMonth ?? publishedMonth ?? computeEditingMonth() : computeEditingMonth();
-  const initialData = (await getMonthlyReport(defaultMonth)) ?? emptyReport(customActivities);
+  const rawData = (await getMonthlyReport(defaultMonth)) ?? emptyReport(customActivities);
+  const initialData = { ...rawData, highlights: visibleHighlights(rawData.highlights, role, name) };
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">

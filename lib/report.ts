@@ -1,4 +1,4 @@
-import { TEAMS, type SourceBreakdownConfig, type TeamData } from "./teams";
+import { MEMBER_NAMES, TEAMS, hasFullHighlightsAccess, type SourceBreakdownConfig, type TeamData } from "./teams";
 
 export type SourceEntry = {
   id: string;
@@ -47,11 +47,52 @@ export type ReportHighlights = {
   newInitiatives: string;
 };
 
+/** Each named member gets their own Highlights entry instead of one shared blob — so one person
+ * editing theirs can't accidentally wipe out someone else's Main Achievements, Challenges, or New
+ * Initiatives. Keyed by member name (see MEMBER_NAMES in lib/teams.ts), plus the reserved
+ * LEGACY_HIGHLIGHTS_KEY bucket for content saved before this feature existed. */
+export type HighlightsByMember = Record<string, ReportHighlights>;
+
+/** Highlights saved before this feature existed were one shared blob with no owner — migrated
+ * here on read instead of silently dropped. Visible/editable only to whoever has full Highlights
+ * access (admin, Omaima), same as every member's own entry is to them alone. */
+export const LEGACY_HIGHLIGHTS_KEY = "Team (before individual highlights)";
+
+function emptyHighlights(): ReportHighlights {
+  return { mainAchievements: "", challenges: "", newInitiatives: "" };
+}
+
+/** Combines every member's individual Highlights entry into one set of three strings for the
+ * report — each person's lines simply concatenated (each stays its own bullet, same as a single
+ * person's multi-line entry already renders). */
+export function mergeHighlights(highlights: HighlightsByMember): ReportHighlights {
+  const merge = (key: keyof ReportHighlights) =>
+    Object.values(highlights)
+      .map((h) => h[key])
+      .filter(Boolean)
+      .join("\n");
+  return {
+    mainAchievements: merge("mainAchievements"),
+    challenges: merge("challenges"),
+    newInitiatives: merge("newInitiatives"),
+  };
+}
+
+/** Cuts a report's highlights down to only what `role`/`name` is allowed to see — without full
+ * access (admin, Omaima), that's their own entry alone. Applied server-side wherever report data
+ * reaches the browser (SSR props, the report-data API), not just in what the UI chooses to render
+ * — otherwise everyone else's text would still sit in the page's HTML/JSON, readable via view
+ * source even though nothing on screen shows it. */
+export function visibleHighlights(highlights: HighlightsByMember, role: "admin" | "member", name: string): HighlightsByMember {
+  if (hasFullHighlightsAccess(role, name)) return highlights;
+  return { [name]: highlights[name] ?? emptyHighlights() };
+}
+
 export type MonthlyReport = {
   teams: Record<string, TeamData>;
   notes: Record<string, string>;
   sourceBreakdowns: SourceBreakdowns;
-  highlights: ReportHighlights;
+  highlights: HighlightsByMember;
   /** Report-wide note not tied to any one team — shown first in the Executive Summary's Notes list. */
   generalNotes: string;
   /** Replaces the "Total Tasks" glance card's usual auto-sum across every team when set — 0 means
@@ -111,11 +152,14 @@ export function emptyReport(customActivities: CustomActivity[] = []): MonthlyRep
     }
     teamTotalOverrides[t.key] = 0;
   }
+  const highlights: HighlightsByMember = {};
+  for (const name of MEMBER_NAMES) highlights[name] = emptyHighlights();
+
   return {
     teams,
     notes,
     sourceBreakdowns,
-    highlights: { mainAchievements: "", challenges: "", newInitiatives: "" },
+    highlights,
     generalNotes: "",
     totalTasksOverride: 0,
     fieldUnits,
@@ -139,6 +183,39 @@ function normalizeSourceEntries(raw: unknown, idPrefix: string, unitOptions?: st
         };
       })
     : [];
+}
+
+function normalizeOneHighlights(raw: unknown): ReportHighlights {
+  const src = raw as Record<string, unknown> | null;
+  return {
+    mainAchievements: typeof src?.mainAchievements === "string" ? src.mainAchievements : "",
+    challenges: typeof src?.challenges === "string" ? src.challenges : "",
+    newInitiatives: typeof src?.newInitiatives === "string" ? src.newInitiatives : "",
+  };
+}
+
+/** Accepts both the current per-member shape and the old flat shape (a single
+ * {mainAchievements, challenges, newInitiatives} shared by everyone, saved before this feature
+ * existed) — migrating the latter into LEGACY_HIGHLIGHTS_KEY instead of dropping it. */
+function normalizeHighlights(raw: unknown): HighlightsByMember {
+  const result: HighlightsByMember = {};
+  for (const name of MEMBER_NAMES) result[name] = emptyHighlights();
+
+  if (!raw || typeof raw !== "object") return result;
+  const obj = raw as Record<string, unknown>;
+
+  const isPerMember = MEMBER_NAMES.some((n) => obj[n] && typeof obj[n] === "object");
+  if (isPerMember) {
+    for (const name of MEMBER_NAMES) {
+      if (obj[name]) result[name] = normalizeOneHighlights(obj[name]);
+    }
+    return result;
+  }
+
+  if (typeof obj.mainAchievements === "string" || typeof obj.challenges === "string" || typeof obj.newInitiatives === "string") {
+    result[LEGACY_HIGHLIGHTS_KEY] = normalizeOneHighlights(obj);
+  }
+  return result;
 }
 
 /** Coerce arbitrary JSON into a well-formed MonthlyReport, dropping anything malformed. */
@@ -201,11 +278,7 @@ export function normalizeReport(raw: unknown, customActivities: CustomActivity[]
     }
   }
 
-  const highlights: ReportHighlights = {
-    mainAchievements: typeof highlightsSrc.mainAchievements === "string" ? highlightsSrc.mainAchievements : "",
-    challenges: typeof highlightsSrc.challenges === "string" ? highlightsSrc.challenges : "",
-    newInitiatives: typeof highlightsSrc.newInitiatives === "string" ? highlightsSrc.newInitiatives : "",
-  };
+  const highlights = normalizeHighlights(highlightsSrc);
 
   const totalTasksOverrideN = Number(src?.totalTasksOverride);
 
